@@ -14,7 +14,6 @@ data/
 CycPeptMPDB-4D/
 MultiCycPermea/
 Multi_CycGT/
-splits/
 logs/
 *.pt
 *.pth
@@ -22,6 +21,7 @@ logs/
 *.h5
 *.hdf5
 *.pkl
+!splits/*.pkl
 *.pickle
 *.npz
 *.npy
