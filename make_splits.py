@@ -16,12 +16,22 @@ Three settings (following MultiCycPermea, Wang et al. 2025):
              5140/5160 distinct FPs and unlocks t=0.275 as the largest
              threshold at which single-linkage still bin-packs into
              ~80/10/10; above that chaining empties the val fold.)
-  3. Cliff : pairs with Tanimoto >= 0.9 AND |dPAMPA| > 2 distributed evenly.
-             Uses standard ECFP4 (r=2, 2048 bits, useChirality=False) for
-             the similarity test -- the conventional activity-cliff
-             definition. Different from OD's chirality-aware ECFP8 because
-             "cliff" classically means same connectivity / different
-             activity, whereas OD wants stereo-resolved separation.
+  3. Cliff_pair  : same cliff-pair definition as below, then assigned
+                   so every pair stays inside one split (connected-component
+                   bin-packing). Use when pair-level cliff evaluation matters.
+  4. Cliff_ratio : same cliff pairs, but cliff and non-cliff molecules are
+                   each split 80/10/10 independently. Pair membership is
+                   NOT preserved across splits; use when you only need the
+                   cliff fraction balanced across train/val/test.
+
+     Cliff pair definition (shared by both): normalized SMILES Levenshtein
+     similarity >= 0.9 AND |dPAMPA| > 2. Similarity is computed as
+         1 - lev(s_i, s_j) / max(|s_i|, |s_j|)
+     via cliffs.get_levenshtein_matrix (MoleculeACE-style). For cyclic
+     peptides small string-level edits (single-residue swap, N-methyl
+     toggle, D/L flip) are exactly the "almost-identical sequence, different
+     permeability" cases we want to flag, and SMILES-string similarity
+     captures that more directly than connectivity-only fingerprints.
 
 All splits saved as pickled dict of index arrays referring to rows of
 CycPeptMPDB-4D_with_SMILES.csv (preserving that file's row order).
@@ -35,6 +45,8 @@ from rdkit import Chem, DataStructs, RDLogger
 from rdkit.Chem import AllChem
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import squareform
+
+from cliffs import get_levenshtein_matrix
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -179,35 +191,24 @@ def split_scaffold(smiles_list):
 
 
 def find_cliff_pairs(smiles_list, pampa, sim_thresh=0.9, dy_thresh=2.0):
-    """Return list of (i,j) pairs with Tanimoto >= sim_thresh & |dPAMPA| > dy_thresh.
+    """Return list of (i,j) pairs with normalized SMILES Levenshtein
+    similarity >= sim_thresh AND |dPAMPA| > dy_thresh.
 
-    Uses standard ECFP4 (Morgan r=2, 2048 bits, useChirality=False) for the
-    similarity test -- the conventional activity-cliff definition. This is
-    intentionally different from the OD-split fingerprint (ECFP8/r=4/4096/
-    chirality): OD wants stereo-resolved structural separation, whereas the
-    cliff definition follows the cheminformatics convention of "same scaffold
-    /connectivity, different activity," for which ECFP4 is standard.
+    Similarity is delegated to cliffs.get_levenshtein_matrix:
+        sim(s_i, s_j) = 1 - lev(s_i, s_j) / max(|s_i|, |s_j|)
+    PAMPA is a log-permeability value (negative, ~[-9.5, -4]), so we keep
+    the absolute-difference threshold rather than cliffs.ActivityCliffs's
+    fold-change (which is meaningless for negative values).
     """
-    print("[Cliff] computing Morgan fingerprints (ECFP4, useChirality=False)...")
-    fps = []
-    for s in smiles_list:
-        m = Chem.MolFromSmiles(s)
-        fps.append(AllChem.GetMorganFingerprintAsBitVect(m, 2, nBits=2048,
-                                                         useChirality=False)
-                   if m is not None else None)
+    print("[Cliff] computing pairwise SMILES Levenshtein similarity...")
+    sim_mat = get_levenshtein_matrix(smiles_list)
     pampa = np.asarray(pampa, dtype=np.float32)
-    n = len(fps)
+    n = len(smiles_list)
     pairs = []
     for i in range(n):
-        if fps[i] is None:
-            continue
-        sims = DataStructs.BulkTanimotoSimilarity(fps[i], fps[i + 1:])
-        for j_off, s in enumerate(sims):
-            j = i + 1 + j_off
-            if s >= sim_thresh and abs(pampa[i] - pampa[j]) > dy_thresh:
+        for j in range(i + 1, n):
+            if sim_mat[i, j] >= sim_thresh and abs(pampa[i] - pampa[j]) > dy_thresh:
                 pairs.append((i, j))
-        if i % 500 == 0:
-            print(f"  scanned {i}/{n}, pairs so far: {len(pairs)}")
     print(f"[Cliff] total pairs: {len(pairs)}")
     return pairs
 
@@ -284,6 +285,42 @@ def split_cliff(n, cliff_pairs):
     }
 
 
+def split_cliff_ratio(n, cliff_pairs):
+    """Distribute cliff and non-cliff molecules independently with the same
+    80/10/10 ratio. Pair membership is NOT preserved -- two molecules from
+    the same cliff pair may end up in different splits. Use this when you
+    want each split to contain the same fraction of cliff molecules but do
+    not need within-split pair evaluation.
+    """
+    cliff_mols = set()
+    for i, j in cliff_pairs:
+        cliff_mols.add(int(i)); cliff_mols.add(int(j))
+
+    rng_ = random.Random(SEED)
+
+    def split_indices(idx_list):
+        idx_list = list(idx_list)
+        rng_.shuffle(idx_list)
+        n_te = int(round(len(idx_list) * 0.10))
+        n_va = int(round(len(idx_list) * 0.10))
+        return (idx_list[n_te + n_va:],          # train
+                idx_list[n_te:n_te + n_va],      # val
+                idx_list[:n_te])                 # test
+
+    cliff_list = sorted(cliff_mols)
+    non_cliff = [i for i in range(n) if i not in cliff_mols]
+    tr_c, va_c, te_c = split_indices(cliff_list)
+    tr_n, va_n, te_n = split_indices(non_cliff)
+
+    return {
+        "train": np.sort(np.array(tr_c + tr_n, dtype=int)),
+        "val":   np.sort(np.array(va_c + va_n, dtype=int)),
+        "test":  np.sort(np.array(te_c + te_n, dtype=int)),
+        "cliff_mols":  np.array(sorted(cliff_mols), dtype=int),
+        "cliff_pairs": np.array(cliff_pairs, dtype=int),
+    }
+
+
 def main():
     df = pd.read_csv(CSV)
     n = len(df)
@@ -303,13 +340,24 @@ def main():
     for k, v in splits["OD"].items():
         print(f"  {k}: {len(v)}")
 
-    print("\n=== Cliff split (Tanimoto>=0.9, |dPAMPA|>2) ===")
+    print("\n=== Cliff pairs (SMILES Levenshtein sim>=0.9, |dPAMPA|>2) ===")
     cliff_pairs = find_cliff_pairs(smiles, pampa)
-    splits["Cliff"] = split_cliff(n, cliff_pairs)
+
+    print("\n=== Cliff_pair split (pairs preserved within a split) ===")
+    splits["Cliff_pair"] = split_cliff(n, cliff_pairs)
     for k in ("train", "val", "test"):
-        print(f"  {k}: {len(splits['Cliff'][k])}")
-    print(f"  cliff molecules: {len(splits['Cliff']['cliff_mols'])}")
-    print(f"  cliff pairs:     {len(splits['Cliff']['cliff_pairs'])}")
+        print(f"  {k}: {len(splits['Cliff_pair'][k])}")
+    print(f"  cliff molecules: {len(splits['Cliff_pair']['cliff_mols'])}")
+    print(f"  cliff pairs:     {len(splits['Cliff_pair']['cliff_pairs'])}")
+
+    print("\n=== Cliff_ratio split (cliff fraction balanced; pairs may cross splits) ===")
+    splits["Cliff_ratio"] = split_cliff_ratio(n, cliff_pairs)
+    cm = set(int(x) for x in splits["Cliff_ratio"]["cliff_mols"])
+    for k in ("train", "val", "test"):
+        idx = splits["Cliff_ratio"][k]
+        n_cliff = sum(1 for i in idx if int(i) in cm)
+        print(f"  {k}: {len(idx)}  (cliff mols: {n_cliff}, "
+              f"frac: {n_cliff/len(idx):.3f})")
 
     out = os.path.join(OUT, "splits_v3.pkl")
     with open(out, "wb") as f:

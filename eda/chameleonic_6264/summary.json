@@ -1,0 +1,40 @@
+{
+  "peptide_id": 6264,
+  "name": "L1_2.1.3.2.4.1",
+  "PAMPA": -5.02,
+  "n_residues": 10,
+  "n_backbone_atoms": 28,
+  "rmsd_water_water_mean": 1.3046331961942363,
+  "rmsd_hexane_hexane_mean": 0.5704463893705877,
+  "rmsd_water_hexane_mean": 3.266234596677954,
+  "rmsd_water_medoid_to_hexane_medoid": 3.110966889052852,
+  "rg_water_mean": 6.042197072322754,
+  "rg_water_std": 0.2690873655830337,
+  "rg_hexane_mean": 5.144373456663479,
+  "rg_hexane_std": 0.09395527605855587,
+  "hb_water_mean": 0.82,
+  "hb_water_std": 0.5173006862551025,
+  "hb_hexane_mean": 2.75,
+  "hb_hexane_std": 0.5894913061275798,
+  "n_clusters_water_1A": 9,
+  "n_clusters_hexane_1A": 1,
+  "water_cluster_sizes": [
+    43,
+    17,
+    16,
+    12,
+    5,
+    3,
+    2,
+    1,
+    1
+  ],
+  "hexane_cluster_sizes": [
+    100
+  ],
+  "pca_explained_variance_top3": [
+    0.45870073637336356,
+    0.24718500085465633,
+    0.06452508705116744
+  ]
+}
