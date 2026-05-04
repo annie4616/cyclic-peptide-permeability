@@ -1,0 +1,32 @@
+# ChameleonNet default config — ID split, 100 epochs.
+
+csv_path: /ssd0/sohyun/cyclic_peptide_permeability/data/CycPeptMPDB-4D_with_assay_descriptors.csv
+pdb_root: /ssd0/sohyun/cyclic_peptide_permeability/CycPeptMPDB-4D
+splits_dir: /ssd0/sohyun/cyclic_peptide_permeability/splits
+cache_dir: /ssd0/sohyun/cyclic_peptide_permeability/ChameleonNet/.cache_pdb
+output_dir: /ssd0/sohyun/cyclic_peptide_permeability/ChameleonNet/runs/default
+
+split_scheme: ID
+use_trajectory: true
+max_conformers: 16
+
+hidden_dim: 128
+conformer_layers: 3
+sequence_backend: learned
+head_hidden: 256
+dropout: 0.1
+
+lambda_chameleonic: 0.1
+lambda_triplet: 0.05
+pampa_baseline: -8.0
+
+batch_size: 16
+num_workers: 4
+epochs: 100
+lr: 0.0005
+weight_decay: 0.00001
+warmup_epochs: 5
+grad_clip: 1.0
+
+seed: 42
+device: cuda

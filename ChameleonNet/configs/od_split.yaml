@@ -1,0 +1,32 @@
+# Out-of-distribution evaluation: train on OD_train, validate on OD_val,
+# test on OD_test. Tighter LR + smaller model often helps OD generalization.
+
+csv_path: /ssd0/sohyun/cyclic_peptide_permeability/data/CycPeptMPDB-4D_with_assay_descriptors.csv
+pdb_root: /ssd0/sohyun/cyclic_peptide_permeability/CycPeptMPDB-4D
+splits_dir: /ssd0/sohyun/cyclic_peptide_permeability/splits
+cache_dir: /ssd0/sohyun/cyclic_peptide_permeability/ChameleonNet/.cache_pdb
+output_dir: /ssd0/sohyun/cyclic_peptide_permeability/ChameleonNet/runs/od
+
+split_scheme: OD
+use_trajectory: true
+max_conformers: 16
+
+hidden_dim: 96
+conformer_layers: 3
+sequence_backend: learned
+head_hidden: 192
+dropout: 0.2
+
+lambda_chameleonic: 0.15
+lambda_triplet: 0.1
+
+batch_size: 16
+num_workers: 4
+epochs: 80
+lr: 0.0003
+weight_decay: 0.00005
+warmup_epochs: 5
+grad_clip: 1.0
+
+seed: 42
+device: cuda

@@ -1,0 +1,47 @@
+# Python virtual environments
+mcp_env/
+venv/
+env/
+.venv/
+*.egg-info/
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+
+# Large data / datasets / model checkpoints
+data/
+CycPeptMPDB-4D/
+MultiCycPermea/
+Multi_CycGT/
+splits/
+logs/
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.npz
+*.npy
+*.parquet
+
+# Large notebooks (regenerable outputs)
+eda.ipynb
+eda2.ipynb
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
