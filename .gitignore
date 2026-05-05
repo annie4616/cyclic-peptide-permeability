@@ -21,7 +21,7 @@ logs/
 *.h5
 *.hdf5
 *.pkl
-!splits/*.pkl
+!splits/
 *.pickle
 *.npz
 *.npy
