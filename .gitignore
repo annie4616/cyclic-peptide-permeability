@@ -22,7 +22,7 @@ logs/
 *.hdf5
 *.pkl
 !splits/
-*.pickle
+# *.pickle
 *.npz
 *.npy
 *.parquet
