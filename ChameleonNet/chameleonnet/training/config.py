@@ -32,6 +32,8 @@ class TrainConfig:
     descriptor_cols: Optional[List[str]] = None  # None → DEFAULT_DESCRIPTORS
 
     # model
+    model_arch: str = "v1"  # "v1" | "v2" — v2 is residue-resolved chameleonic
+    augment_delta_descriptors: bool = False  # append derived Δ-features (V2 default on)
     hidden_dim: int = 128
     conformer_layers: int = 3
     sequence_backend: str = "learned"  # "learned" | "peptideclm"
@@ -43,6 +45,9 @@ class TrainConfig:
     lambda_chameleonic: float = 0.1
     lambda_triplet: float = 0.05
     pampa_baseline: float = -8.0
+    # V2 residue-resolved auxiliary that ties the per-residue chameleon weight
+    # to the global ΔPSA — small weight; turn off with 0.
+    lambda_residue_psa: float = 0.05
 
     # optim
     batch_size: int = 16

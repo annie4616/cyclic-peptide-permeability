@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .chameleonic import chameleonic_magnitude_loss
+from .residue_chameleon import residue_chameleon_psa_loss
 from .triplet import tanimoto_triplet_loss
 
 
@@ -18,6 +19,7 @@ class CompositeLoss:
     """Configuration container; call `composite_loss` for the actual computation."""
     lambda_chameleonic: float = 0.1
     lambda_triplet: float = 0.1
+    lambda_residue_psa: float = 0.0  # V2-only; >0 enables residue-Δ ↔ |ΔPSA| aux
     chameleonic_norm_weight: float = 1.0
     chameleonic_head_weight: float = 1.0
     pampa_baseline: float = -8.0
@@ -33,13 +35,15 @@ def composite_loss(
     targets: torch.Tensor,
     smiles: Optional[List[str]] = None,
     fused_embedding: Optional[torch.Tensor] = None,
+    delta_psa_target: Optional[torch.Tensor] = None,
     cfg: CompositeLoss = CompositeLoss(),
 ) -> Dict[str, torch.Tensor]:
-    """Returns a dict with 'total', 'mse', 'chameleonic', 'triplet'.
+    """Returns a dict with 'total', 'mse', 'chameleonic', 'triplet', 'residue_psa'.
 
     The trainer logs the breakdown; only `total` is used for the backward
     pass. Auxiliary losses contribute zero (no-op) when their preconditions
-    aren't met (e.g. RDKit missing → triplet returns 0).
+    aren't met (e.g. RDKit missing → triplet returns 0; V1 model has no
+    `delta_residue` → residue_psa returns 0).
     """
     pampa_pred = outputs["pampa_pred"]
     mse = F.mse_loss(pampa_pred, targets)
@@ -67,10 +71,30 @@ def composite_loss(
     else:
         trip = pampa_pred.new_zeros(())
 
-    total = mse + cfg.lambda_chameleonic * cham + cfg.lambda_triplet * trip
+    if (
+        cfg.lambda_residue_psa > 0
+        and "delta_residue" in outputs
+        and "res_mask" in outputs
+        and delta_psa_target is not None
+    ):
+        res_psa = residue_chameleon_psa_loss(
+            delta_residue=outputs["delta_residue"],
+            res_mask=outputs["res_mask"],
+            delta_psa_target=delta_psa_target,
+        )
+    else:
+        res_psa = pampa_pred.new_zeros(())
+
+    total = (
+        mse
+        + cfg.lambda_chameleonic * cham
+        + cfg.lambda_triplet * trip
+        + cfg.lambda_residue_psa * res_psa
+    )
     return {
         "total": total,
         "mse": mse.detach(),
         "chameleonic": cham.detach(),
         "triplet": trip.detach(),
+        "residue_psa": res_psa.detach(),
     }

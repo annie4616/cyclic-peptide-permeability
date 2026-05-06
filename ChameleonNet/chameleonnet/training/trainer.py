@@ -28,7 +28,9 @@ from ..data.dataset import (
 from ..data.residue_vocab import ResidueVocab
 from ..data.splits import load_split
 from ..losses.composite import CompositeLoss, composite_loss
+from ..data.delta_descriptors import apply_delta_features
 from ..models.chameleonnet import ChameleonNet
+from ..models.chameleonnet_v2 import ChameleonNetV2
 from ..utils.metrics import regression_metrics
 from ..utils.scaler import DescriptorScaler
 from ..utils.seed import set_seed
@@ -56,6 +58,7 @@ def _move_batch(batch: dict, device: torch.device) -> dict:
 
 def _build_loaders(cfg: TrainConfig, vocab: ResidueVocab):
     descriptor_cols = cfg.descriptor_cols or DEFAULT_DESCRIPTORS
+    augment = cfg.augment_delta_descriptors or cfg.model_arch == "v2"
 
     def make_dataset(scheme: str, fold: str) -> ChameleonDataset:
         ids = load_split(cfg.splits_dir, scheme, fold)
@@ -68,15 +71,23 @@ def _build_loaders(cfg: TrainConfig, vocab: ResidueVocab):
             use_trajectory=cfg.use_trajectory,
             max_conformers=cfg.max_conformers,
             cache_dir=cfg.cache_dir,
+            augment_delta_descriptors=augment,
         )
 
     train_ds = make_dataset(cfg.split_scheme, "train")
     val_ds = make_dataset(cfg.split_scheme, "val")
 
     # Fit the descriptor scaler on the train descriptors only.
-    train_desc = np.stack(
+    # Important: when augmentation is on, fit the scaler in the *augmented*
+    # space (raw 12 + 10 derived Δ features) so train/val/test stats line up
+    # with what __getitem__ actually returns.
+    raw_train = np.stack(
         [train_ds.records[pid].descriptors for pid in train_ds.ids], axis=0
     )
+    if augment:
+        train_desc = np.stack([apply_delta_features(v) for v in raw_train], axis=0)
+    else:
+        train_desc = raw_train
     scaler = DescriptorScaler().fit(train_desc)
 
     # Apply scaler at __getitem__ time via a thin wrapper to avoid mutating
@@ -101,7 +112,9 @@ def _build_loaders(cfg: TrainConfig, vocab: ResidueVocab):
         val_ds, batch_size=cfg.batch_size, shuffle=False,
         num_workers=cfg.num_workers, collate_fn=chameleon_collate, pin_memory=True,
     )
-    return train_loader, val_loader, scaler, descriptor_cols
+    # Real descriptor dim seen by the model (raw 12, or 22 with Δ-augment).
+    descriptor_dim = train_ds.descriptor_dim
+    return train_loader, val_loader, scaler, descriptor_cols, descriptor_dim
 
 
 def _cosine_warmup_lr(epoch: int, cfg: TrainConfig) -> float:
@@ -118,11 +131,24 @@ class Trainer:
         self.device = _device_of(cfg)
 
         self.vocab = ResidueVocab.from_csvs(*cfg.vocab_csvs)
-        self.train_loader, self.val_loader, self.scaler, self.descriptor_cols = _build_loaders(cfg, self.vocab)
+        (
+            self.train_loader,
+            self.val_loader,
+            self.scaler,
+            self.descriptor_cols,
+            self.descriptor_dim,
+        ) = _build_loaders(cfg, self.vocab)
 
-        self.model = ChameleonNet(
+        if cfg.model_arch == "v2":
+            ModelCls = ChameleonNetV2
+        elif cfg.model_arch == "v1":
+            ModelCls = ChameleonNet
+        else:
+            raise ValueError(f"Unknown model_arch: {cfg.model_arch!r}; expected 'v1' or 'v2'")
+
+        self.model = ModelCls(
             vocab=self.vocab,
-            descriptor_dim=len(self.descriptor_cols),
+            descriptor_dim=self.descriptor_dim,
             hidden_dim=cfg.hidden_dim,
             conformer_layers=cfg.conformer_layers,
             sequence_backend=cfg.sequence_backend,
@@ -138,6 +164,7 @@ class Trainer:
         self.loss_cfg = CompositeLoss(
             lambda_chameleonic=cfg.lambda_chameleonic,
             lambda_triplet=cfg.lambda_triplet,
+            lambda_residue_psa=cfg.lambda_residue_psa if cfg.model_arch == "v2" else 0.0,
             pampa_baseline=cfg.pampa_baseline,
         )
 
@@ -173,6 +200,7 @@ class Trainer:
                 targets=targets,
                 smiles=batch["smiles"],
                 fused_embedding=fused,
+                delta_psa_target=batch.get("delta_psa_raw"),
                 cfg=self.loss_cfg,
             )
             if train:
@@ -189,12 +217,15 @@ class Trainer:
             "mse": float(losses["mse"].cpu()),
             "chameleonic": float(losses["chameleonic"].cpu()),
             "triplet": float(losses["triplet"].cpu()),
+            "residue_psa": float(losses.get("residue_psa", losses["mse"].new_zeros(())).cpu()),
             "preds": outputs["pampa_pred"].detach().cpu().numpy(),
             "targets": targets.detach().cpu().numpy(),
         }
 
     def _epoch_pass(self, loader: DataLoader, train: bool) -> Dict[str, float]:
-        agg: Dict[str, List[float]] = {"total": [], "mse": [], "chameleonic": [], "triplet": []}
+        agg: Dict[str, List[float]] = {
+            "total": [], "mse": [], "chameleonic": [], "triplet": [], "residue_psa": [],
+        }
         all_preds, all_targets = [], []
         for batch in loader:
             res = self._step(batch, train=train)
@@ -266,6 +297,9 @@ class Trainer:
                 use_trajectory=self.cfg.use_trajectory,
                 max_conformers=self.cfg.max_conformers,
                 cache_dir=self.cfg.cache_dir,
+                augment_delta_descriptors=(
+                    self.cfg.augment_delta_descriptors or self.cfg.model_arch == "v2"
+                ),
             )
             scaler = self.scaler
             orig = ds.__getitem__
