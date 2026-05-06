@@ -86,12 +86,17 @@ def build_triplets(
     if sim is None:
         return []
 
+    # Mining is an index-search loop that runs faster on CPU and lets us avoid
+    # a per-iteration device sync. The Tanimoto matrix is already on CPU; pull
+    # PAMPA over once (no grad — we only need values for the mask) so the two
+    # tensors live on the same device.
+    pampa_cpu = pampa.detach().to("cpu")
+
     triplets: List[Tuple[int, int, int]] = []
     B = sim.shape[0]
     for a in range(B):
-        # Find candidate positives and negatives.
         sim_row = sim[a]
-        pampa_diff = (pampa - pampa[a]).abs()
+        pampa_diff = (pampa_cpu - pampa_cpu[a]).abs()
         pos_mask = (sim_row >= sim_high) & (pampa_diff <= pampa_gap)
         pos_mask[a] = False
         neg_mask = sim_row <= sim_low
