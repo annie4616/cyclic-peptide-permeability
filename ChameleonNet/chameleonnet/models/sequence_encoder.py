@@ -96,9 +96,23 @@ class SequenceEncoder(nn.Module):
                 raise ValueError(
                     "peptideclm_name_or_path must be provided when backend='peptideclm'."
                 )
-            self.tokenizer = AutoTokenizer.from_pretrained(peptideclm_name_or_path)
-            self.lm = AutoModel.from_pretrained(peptideclm_name_or_path)
-            lm_hidden = self.lm.config.hidden_size
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                peptideclm_name_or_path, trust_remote_code=True
+            )
+            self.lm = AutoModel.from_pretrained(
+                peptideclm_name_or_path, trust_remote_code=True
+            )
+            # Standard HF models expose `hidden_size`; PeptideCLM-2 uses `embed_dim`.
+            lm_hidden = (
+                getattr(self.lm.config, "hidden_size", None)
+                or getattr(self.lm.config, "embed_dim", None)
+                or getattr(self.lm.config, "d_model", None)
+            )
+            if lm_hidden is None:
+                raise ValueError(
+                    f"Could not determine hidden dim of {peptideclm_name_or_path}; "
+                    f"expected one of hidden_size/embed_dim/d_model on its config."
+                )
             self.proj = nn.Linear(lm_hidden, hidden_dim)
         else:
             raise ValueError(f"Unknown sequence backend: {backend}")

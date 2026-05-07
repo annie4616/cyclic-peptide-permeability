@@ -63,6 +63,12 @@ class TrainConfig:
     seed: int = 42
     device: str = "cuda"
 
+    # logging
+    wandb_project: Optional[str] = None
+    wandb_entity: Optional[str] = None
+    wandb_run_name: Optional[str] = None
+    wandb_mode: str = "online"  # "online" | "offline" | "disabled"
+
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 

@@ -36,6 +36,11 @@ from ..utils.scaler import DescriptorScaler
 from ..utils.seed import set_seed
 from .config import TrainConfig
 
+try:
+    import wandb  # type: ignore
+except ImportError:  # pragma: no cover
+    wandb = None  # type: ignore
+
 
 def _device_of(cfg: TrainConfig) -> torch.device:
     if cfg.device == "cuda" and not torch.cuda.is_available():
@@ -176,6 +181,21 @@ class Trainer:
         self.best_epoch: int = -1
         self.history: List[Dict[str, float]] = []
 
+        self._wandb_run = self._maybe_init_wandb()
+
+    def _maybe_init_wandb(self):
+        if wandb is None or self.cfg.wandb_mode == "disabled" or not self.cfg.wandb_project:
+            return None
+        return wandb.init(
+            project=self.cfg.wandb_project,
+            entity=self.cfg.wandb_entity,
+            name=self.cfg.wandb_run_name or Path(self.cfg.output_dir).name,
+            mode=self.cfg.wandb_mode,
+            config=self.cfg.to_dict(),
+            dir=str(self.output_dir),
+            reinit=True,
+        )
+
     def _step(self, batch: dict, train: bool) -> Dict[str, float]:
         batch = _move_batch(batch, self.device)
         targets = batch["pampa"]
@@ -258,6 +278,8 @@ class Trainer:
             log.update({f"val/{k}": v for k, v in val_stats.items()})
             self.history.append(log)
             print(json.dumps(log))
+            if self._wandb_run is not None:
+                self._wandb_run.log(log, step=epoch)
 
             val_mae = val_stats.get("metric_mae", float("inf"))
             if val_mae < self.best_val_mae:
@@ -274,6 +296,9 @@ class Trainer:
                 )
 
         (self.output_dir / "history.json").write_text(json.dumps(self.history, indent=2))
+        if self._wandb_run is not None:
+            self._wandb_run.summary["best_epoch"] = self.best_epoch
+            self._wandb_run.summary["best_val_mae"] = self.best_val_mae
 
     def evaluate_all(self) -> Dict[str, Dict[str, float]]:
         """Evaluate the best-checkpoint model on each requested split scheme's test fold."""
@@ -320,4 +345,10 @@ class Trainer:
             print(f"[test/{scheme}] {results[scheme]}")
 
         (self.output_dir / "test_metrics.json").write_text(json.dumps(results, indent=2))
+        if self._wandb_run is not None:
+            flat = {f"test/{scheme}/{k}": v for scheme, m in results.items() for k, v in m.items()}
+            self._wandb_run.log(flat)
+            for k, v in flat.items():
+                self._wandb_run.summary[k] = v
+            self._wandb_run.finish()
         return results

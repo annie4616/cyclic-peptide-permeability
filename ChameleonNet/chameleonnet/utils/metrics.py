@@ -14,14 +14,14 @@ def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, floa
     y_true = y_true[mask]
     y_pred = y_pred[mask]
     if len(y_true) == 0:
-        return {"mae": float("nan"), "rmse": float("nan"), "r2": float("nan"), "pearson": float("nan")}
+        return {"mae": float("nan"), "mse": float("nan"), "r2": float("nan"), "pearson": float("nan")}
     err = y_pred - y_true
     mae = float(np.mean(np.abs(err)))
-    rmse = float(np.sqrt(np.mean(err * err)))
+    mse = float(np.mean(err * err))
     var = float(np.var(y_true))
-    r2 = float(1.0 - np.mean(err * err) / var) if var > 0 else float("nan")
+    r2 = float(1.0 - mse / var) if var > 0 else float("nan")
     if y_true.std() > 0 and y_pred.std() > 0:
         pearson = float(np.corrcoef(y_true, y_pred)[0, 1])
     else:
         pearson = float("nan")
-    return {"mae": mae, "rmse": rmse, "r2": r2, "pearson": pearson}
+    return {"mae": mae, "mse": mse, "r2": r2, "pearson": pearson}
