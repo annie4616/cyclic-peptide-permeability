@@ -45,7 +45,7 @@ except ImportError:  # pragma: no cover
 def _device_of(cfg: TrainConfig) -> torch.device:
     if cfg.device == "cuda" and not torch.cuda.is_available():
         return torch.device("cpu")
-    return torch.device(cfg.device)
+    return torch.device(cfg.device) 
 
 
 def _move_batch(batch: dict, device: torch.device) -> dict:
@@ -131,8 +131,9 @@ def _cosine_warmup_lr(epoch: int, cfg: TrainConfig) -> float:
 
 class Trainer:
     def __init__(self, cfg: TrainConfig):
-        set_seed(cfg.seed)
+        set_seed(cfg.seed) # 시드 고정
         self.cfg = cfg
+        # cuda or cpu as specified in config
         self.device = _device_of(cfg)
 
         self.vocab = ResidueVocab.from_csvs(*cfg.vocab_csvs)

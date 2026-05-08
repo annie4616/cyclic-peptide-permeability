@@ -16,8 +16,8 @@
   "augment_delta_descriptors": true,
   "hidden_dim": 128,
   "conformer_layers": 3,
-  "sequence_backend": "learned",
-  "peptideclm_name_or_path": null,
+  "sequence_backend": "peptideclm",
+  "peptideclm_name_or_path": "aaronfeller/peptideclm-2-mlm-base",
   "head_hidden": 256,
   "dropout": 0.1,
   "lambda_chameleonic": 0.1,
@@ -37,5 +37,9 @@
     "Cliff"
   ],
   "seed": 42,
-  "device": "cuda"
+  "device": "cuda",
+  "wandb_project": null,
+  "wandb_entity": null,
+  "wandb_run_name": null,
+  "wandb_mode": "online"
 }

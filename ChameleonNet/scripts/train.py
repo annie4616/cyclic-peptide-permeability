@@ -51,13 +51,15 @@ def _override_config(cfg: TrainConfig, extra: list[str]) -> TrainConfig:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default=None,
+    parser.add_argument("--config", type=str, default="/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/configs/v2_local.yaml",
                         help="Optional YAML config; defaults baked into TrainConfig if omitted.")
     parser.add_argument("--no-eval", action="store_true",
                         help="Skip the test-set evaluation pass at end.")
     args, extra = parser.parse_known_args()
 
+    # yaml 파일 안의 경로들과  반환
     cfg = load_config(args.config) if args.config else TrainConfig()
+    # argparse를 정의하지 않고서도 config 넣을 수 있음
     cfg = _override_config(cfg, extra)
 
     trainer = Trainer(cfg)

@@ -68,6 +68,7 @@ class ResidueChameleonHead(nn.Module):
         h_hexane_res: torch.Tensor,  # (B, R, F)
         res_mask: torch.Tensor,      # (B, R) True = pad/missing
     ) -> Dict[str, torch.Tensor]:
+        # attention score 계산 부분
         delta = h_water_res - h_hexane_res
         x = torch.cat([h_water_res, h_hexane_res, delta], dim=-1)
         score = self.score(x).squeeze(-1)  # (B, R)

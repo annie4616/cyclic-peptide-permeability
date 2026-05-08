@@ -80,11 +80,12 @@ def load_config(path: str | Path) -> TrainConfig:
     try:
         import yaml
         data = yaml.safe_load(text) or {}
-    except ImportError:
+    except ImportError: # Pyyaml이 설치되어 있지 않은 경우, 간단한 YAML 파서를 사용하여 데이터를 로드
         # Very small fallback parser: only supports `key: value` lines and
         # nested lists prefixed with `- `. Good enough for our tiny configs.
         data = _tiny_yaml_parse(text)
     cfg = TrainConfig(**{k: v for k, v in data.items() if k in TrainConfig.__dataclass_fields__})
+    # train config에 있는 필드만 사용하여 TrainConfig 객체를 생성
     return cfg
 
 

@@ -1,0 +1,55 @@
+# ChameleonNet V2 — environment pinned to RTX PRO 6000 Blackwell server.
+# Differences from requirements.txt:
+#   * torch/torchvision pinned to cu130 wheels (Blackwell needs >=cu126; cu121 from
+#     the original requirements does not run on this GPU).
+#   * transformers bumped 4.50.3 -> 5.x and tokenizers/safetensors/huggingface-hub
+#     bumped to versions compatible with PeptideCLM-2 (`trust_remote_code` custom
+#     model_type "MLM_model"). Adds rjieba (RoFormerTokenizer needs it).
+#   * Trimmed packages not used by ChameleonNet's training/eval/EDA path so the
+#     env stays small. requirements.txt was the project-wide superset.
+#
+# Install order (conda env, recommended):
+#   conda create -n chameleonnet -c conda-forge --override-channels python=3.13 -y
+#   conda activate chameleonnet
+#   pip install --index-url https://download.pytorch.org/whl/cu130 \
+#       torch==2.11.0+cu130 torchvision==0.26.0+cu130
+#   pip install -r requirements_rp5.txt
+#
+# To keep ~/.local user-site packages from leaking into the env, set
+# PYTHONNOUSERSITE=1. This repo's chameleonnet env auto-sets it via
+# $CONDA_PREFIX/etc/conda/activate.d/no_user_site.sh.
+
+# --- core deep-learning stack (must match the cu130 wheels above) ---
+# (torch / torchvision NOT listed here — install from the PyTorch index URL first.)
+
+numpy==2.4.3
+pandas==3.0.2
+scipy>=1.13
+scikit-learn>=1.5
+tqdm==4.67.3
+PyYAML==6.0.3
+
+# --- HuggingFace / PeptideCLM-2 ---
+transformers==5.8.0
+tokenizers==0.22.2
+safetensors==0.7.0
+huggingface-hub==1.14.0
+hf-xet==1.5.0
+regex==2026.4.4
+rjieba==0.2.1   # required by RoFormerTokenizer used inside PeptideCLM-2
+
+# --- Cheminformatics ---
+rdkit==2026.3.1
+
+# --- Experiment tracking ---
+wandb==0.26.1
+
+# --- Top-level scripts (make_splits.py / draw_images.py / cliffs.py) ---
+python-Levenshtein>=0.25
+CairoSVG>=2.7
+matplotlib>=3.8
+seaborn>=0.13
+
+# --- Notebook / EDA ---
+jupyter>=1.1
+ipykernel>=6.29
