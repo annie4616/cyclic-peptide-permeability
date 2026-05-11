@@ -30,6 +30,7 @@ class TrainConfig:
     use_trajectory: bool = True
     max_conformers: int = 16
     descriptor_cols: Optional[List[str]] = None  # None → DEFAULT_DESCRIPTORS
+    conformer_source: str = "trajectory"  # "trajectory" | "centroids"
 
     # model
     model_arch: str = "v1"  # "v1" | "v2" — v2 is residue-resolved chameleonic
@@ -48,6 +49,14 @@ class TrainConfig:
     # V2 residue-resolved auxiliary that ties the per-residue chameleon weight
     # to the global ΔPSA — small weight; turn off with 0.
     lambda_residue_psa: float = 0.05
+    # Triplet-mining knobs (used only when lambda_triplet > 0). Defaults match
+    # the original behavior; raise resolution + lower sim_high for cyclic
+    # peptides so mined triplets reflect *real* near-neighbors instead of
+    # fingerprint-collision noise.
+    triplet_sim_high: float = 0.7
+    triplet_sim_low: float = 0.4
+    triplet_morgan_radius: int = 2
+    triplet_morgan_nbits: int = 2048
 
     # optim
     batch_size: int = 16
@@ -57,6 +66,7 @@ class TrainConfig:
     weight_decay: float = 1e-5
     warmup_epochs: int = 5
     grad_clip: float = 1.0
+    early_stop_patience: int = 0  # 0 = disabled; otherwise stop if val MAE doesn't improve for N epochs
 
     # eval
     eval_schemes: List[str] = field(default_factory=lambda: ["ID", "OD", "Cliff"])

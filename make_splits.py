@@ -1,25 +1,35 @@
 """
 Create fixed data splits for CycPeptMPDB-4D (4925 peptides).
 
-Three settings (following MultiCycPermea, Wang et al. 2025):
-  1. ID    : random 80/10/10
-  2. OD    : chirality-aware ECFP8 (Morgan r=4, 4096 bits,
-             useChirality=True) + single-linkage clustering at Tanimoto
-             distance 0.275; clusters assigned wholesale to train/val/test.
-             Single linkage guarantees inter-set Tanimoto distance >= 0.275
-             at the molecule level (sim <= 0.725).
-             (Murcko scaffolds are not used: cyclic peptides collapse to a
-             single macrocyclic scaffold. ECFP4 with default useChirality
-             =False also fails: cyclic peptides differ heavily in stereo,
-             and at r=2 stereo-blind FPs collide -- only 806 distinct FPs
-             across 5140 distinct isomeric SMILES. r=4/4096/chirality gives
-             5140/5160 distinct FPs and unlocks t=0.275 as the largest
-             threshold at which single-linkage still bin-packs into
-             ~80/10/10; above that chaining empties the val fold.)
-  3. Cliff_pair  : same cliff-pair definition as below, then assigned
+Settings (following MultiCycPermea, Wang et al. 2025):
+  1. ID         : random 80/10/10
+  2. OD         : chirality-aware ECFP8 (Morgan r=4, 4096 bits,
+                  useChirality=True) + single-linkage clustering at Tanimoto
+                  distance 0.275; clusters assigned wholesale to train/val/test.
+                  Single linkage guarantees inter-set Tanimoto distance >=
+                  0.275 at the molecule level (sim <= 0.725).
+                  (ECFP4 with default useChirality=False fails: cyclic
+                  peptides differ heavily in stereo, and at r=2 stereo-blind
+                  FPs collide -- only 806 distinct FPs across 5140 distinct
+                  isomeric SMILES. r=4/4096/chirality gives 5140/5160
+                  distinct FPs and unlocks t=0.275 as the largest threshold
+                  at which single-linkage still bin-packs into ~80/10/10;
+                  above that chaining empties the val fold.)
+  3. OD_Murcko  : coarser, scaffold-level OD split. Bemis-Murcko scaffolds
+                  are extracted, fingerprinted with ECFP8 (r=4, 4096 bits,
+                  chirality-blind: scaffolds have no side chains so stereo
+                  contributes little), pairwise Tanimoto-clustered with
+                  single linkage at distance 0.275 (same threshold as
+                  molecule-level OD), and each scaffold cluster is assigned
+                  wholesale to one split. Cyclic peptides often collapse
+                  to a small number of macrocyclic skeletons, so this split
+                  tests generalisation to *unseen ring systems*
+                  (complementary to OD, which tests generalisation to unseen
+                  side-chain patterns within similar scaffolds).
+  4. Cliff_pair  : same cliff-pair definition as below, then assigned
                    so every pair stays inside one split (connected-component
                    bin-packing). Use when pair-level cliff evaluation matters.
-  4. Cliff_ratio : same cliff pairs, but cliff and non-cliff molecules are
+  5. Cliff_ratio : same cliff pairs, but cliff and non-cliff molecules are
                    each split 80/10/10 independently. Pair membership is
                    NOT preserved across splits; use when you only need the
                    cliff fraction balanced across train/val/test.
@@ -43,6 +53,7 @@ import pandas as pd
 
 from rdkit import Chem, DataStructs, RDLogger
 from rdkit.Chem import AllChem
+from rdkit.Chem.Scaffolds import MurckoScaffold
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import squareform
 
@@ -50,7 +61,7 @@ from cliffs import get_levenshtein_matrix
 
 RDLogger.DisableLog("rdApp.*")
 
-ROOT = "/ssd0/sohyun/cyclic_peptide/cyclic_peptide_permeability"
+ROOT = "/hdd0/sohyun/cyclic-peptide-permeability"
 CSV = os.path.join(ROOT, "data", "CycPeptMPDB-4D_with_assay_descriptors_preprocessed.csv")
 OUT = os.path.join(ROOT, "splits")
 os.makedirs(OUT, exist_ok=True)
@@ -181,6 +192,176 @@ def split_scaffold(smiles_list):
         out = []
         for c in cluster_list:
             out.extend(cl_to_mols[c].tolist())
+        return np.sort(np.array(out, dtype=int))
+
+    return {
+        "train": mols_for(train_cl),
+        "val":   mols_for(val_cl),
+        "test":  mols_for(test_cl),
+    }
+
+
+def murcko_scaffold_smiles(smiles: str) -> str | None:
+    """Return canonical SMILES of the Bemis-Murcko scaffold of `smiles`.
+
+    For cyclic peptides the scaffold is typically the full macrocycle (all
+    side chains stripped), so most molecules collapse to a small number of
+    near-identical macrocyclic skeletons. This is exactly why ECFP-based
+    OD split (above) is the primary OD setting -- but the scaffold view is
+    still informative as a coarser, ring-system-level OD baseline.
+    """
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+    scaffold = MurckoScaffold.GetScaffoldForMol(mol)
+    if scaffold is None or scaffold.GetNumAtoms() == 0:
+        # fall back to the molecule itself if scaffold is empty (no rings)
+        return Chem.MolToSmiles(mol)
+    return Chem.MolToSmiles(scaffold)
+
+
+def scaffold_fp(scaffold_smi: str, radius: int = 4, nbits: int = 4096):
+    """Morgan fingerprint over a scaffold SMILES (ECFP8, 4096 bits,
+    chirality-blind).
+
+    Same radius/width as the molecule-level OD fingerprint to keep the two
+    splits directly comparable. Chirality is left off here because Murcko
+    scaffolds have already had the stereo-rich side chains stripped, so
+    `useChirality=True` would mostly add noise rather than signal.
+    """
+    mol = Chem.MolFromSmiles(scaffold_smi)
+    if mol is None:
+        return None
+    return AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=nbits)
+
+
+def split_scaffold_murcko(smiles_list, od_thresh: float = 0.275):
+    """Murcko-scaffold-based OD split.
+
+    Pipeline:
+      1. Compute the Bemis-Murcko scaffold for every molecule.
+      2. Group molecules by identical scaffold SMILES (a "scaffold class").
+      3. Build a Tanimoto distance matrix over the *unique* scaffolds
+         (ECFP8, r=4, 4096 bits) and single-linkage cluster them at
+         threshold `od_thresh` -- so structurally close scaffolds (e.g.
+         macrocycles that differ only in ring size or one heteroatom)
+         end up in the same cluster instead of being treated as independent
+         groups.
+      4. Each scaffold cluster is assigned wholesale to one of train/val/
+         test via greedy bin-packing (smallest cluster first into test,
+         then val, rest to train).
+
+    For cyclic peptides this is a *coarser* OD split than the full-molecule
+    ECFP8 version above: many peptides share the same macrocyclic skeleton
+    so scaffold clusters are larger and fewer. That is intentional -- this
+    split tests generalisation to unseen ring systems / scaffold classes,
+    while the full-molecule OD split tests generalisation to unseen
+    side-chain patterns within similar scaffolds.
+
+    Why t=0.275 (matches the molecule-level OD threshold): with r=4/4096
+    the scaffold-distance median is ~0.69 and single-linkage stays well-
+    behaved up to t~0.30. Empirical sweep on 356 unique scaffolds:
+        t=0.275 -> 74 clusters, largest=1098 (22.3%)  [used here]
+        t=0.300 -> 35 clusters, largest=1098 (22.3%)
+        t=0.350 -> 13 clusters, largest=3330 (67.6%)  [val/test starve]
+        t=0.450 ->  3 clusters, largest=3613 (73.4%)  [degenerate]
+    Picking 0.275 keeps OD and OD_Murcko thresholds aligned so that the
+    "scaffold-OD vs molecule-OD" comparison is interpretable: both enforce
+    inter-set Tanimoto distance >= 0.275 in their respective spaces.
+    (At r=2/2048 chaining started already at t~0.15; r=4/4096 unlocks the
+    full 0.275 threshold for scaffolds too.)
+    """
+    print("[OD-Murcko] computing Murcko scaffolds...")
+    scaffolds = [murcko_scaffold_smiles(s) for s in smiles_list]
+    bad = [i for i, sc in enumerate(scaffolds) if sc is None]
+    if bad:
+        raise RuntimeError(f"failed to parse {len(bad)} SMILES (e.g. idx {bad[:3]})")
+
+    # group molecules by scaffold SMILES
+    scaf_to_mols: dict[str, list[int]] = {}
+    for i, sc in enumerate(scaffolds):
+        scaf_to_mols.setdefault(sc, []).append(i)
+    unique_scaffolds = list(scaf_to_mols.keys())
+    print(f"[OD-Murcko] {len(unique_scaffolds)} unique scaffolds across "
+          f"{len(smiles_list)} molecules; "
+          f"largest scaffold class={max(len(v) for v in scaf_to_mols.values())}")
+
+    # Tanimoto distance matrix over unique scaffolds
+    print("[OD-Murcko] fingerprinting scaffolds...")
+    scaf_fps = [scaffold_fp(sc) for sc in unique_scaffolds]
+    scaf_bad = [i for i, f in enumerate(scaf_fps) if f is None]
+    if scaf_bad:
+        raise RuntimeError(f"failed to fingerprint {len(scaf_bad)} scaffolds")
+
+    m = len(scaf_fps)
+    if m == 1:
+        # only one scaffold -- cannot split by scaffold; fall back to
+        # putting everything in train (caller should pick a different split)
+        print("[OD-Murcko] WARNING: only 1 unique scaffold; train-only split")
+        all_idx = np.arange(len(smiles_list))
+        return {"train": all_idx,
+                "val": np.array([], dtype=int),
+                "test": np.array([], dtype=int)}
+
+    print(f"[OD-Murcko] building {m}x{m} scaffold distance matrix...")
+    dist = np.zeros((m, m), dtype=np.float32)
+    for i in range(m):
+        sims = DataStructs.BulkTanimotoSimilarity(scaf_fps[i], scaf_fps[i + 1:])
+        for j, s in enumerate(sims, start=i + 1):
+            d = 1.0 - s
+            dist[i, j] = d
+            dist[j, i] = d
+
+    condensed = squareform(dist, checks=False)
+    print(f"[OD-Murcko] hierarchical clustering (single linkage, t={od_thresh})...")
+    Z = linkage(condensed, method="single")
+    scaf_clusters = fcluster(Z, t=od_thresh, criterion="distance")
+
+    # map: cluster id -> list of molecule indices
+    cl_to_mols: dict[int, list[int]] = {}
+    for scaf_idx, cl in enumerate(scaf_clusters):
+        cl_to_mols.setdefault(int(cl), []).extend(scaf_to_mols[unique_scaffolds[scaf_idx]])
+
+    cl_ids = list(cl_to_mols.keys())
+    cl_to_size = {c: len(cl_to_mols[c]) for c in cl_ids}
+    print(f"[OD-Murcko] {len(cl_ids)} scaffold clusters; "
+          f"largest={max(cl_to_size.values())}, "
+          f"singletons={sum(1 for v in cl_to_size.values() if v == 1)}")
+
+    total = sum(cl_to_size.values())
+    target_test = int(round(0.10 * total))
+    target_val = int(round(0.10 * total))
+
+    # If the largest scaffold cluster alone exceeds 80% of the data, keep it
+    # train-only (same logic as the molecule-level OD split).
+    biggest = max(cl_ids, key=lambda c: cl_to_size[c])
+    keep_biggest_in_train = cl_to_size[biggest] > 0.80 * total
+
+    if keep_biggest_in_train:
+        print(f"[OD-Murcko] largest scaffold cluster ({cl_to_size[biggest]}) "
+              "> 80% of data, keeping it train-only")
+        train_cl = [biggest]
+        candidates = [c for c in cl_ids if c != biggest]
+    else:
+        train_cl = []
+        candidates = list(cl_ids)
+
+    candidates.sort(key=lambda c: cl_to_size[c])  # smallest first
+    val_cl, test_cl = [], []
+    cnt_t = cnt_v = 0
+    for c in candidates:
+        cc = cl_to_size[c]
+        if cnt_t + cc <= target_test:
+            test_cl.append(c); cnt_t += cc
+        elif cnt_v + cc <= target_val:
+            val_cl.append(c); cnt_v += cc
+        else:
+            train_cl.append(c)
+
+    def mols_for(cluster_list):
+        out = []
+        for c in cluster_list:
+            out.extend(cl_to_mols[c])
         return np.sort(np.array(out, dtype=int))
 
     return {
@@ -338,6 +519,11 @@ def main():
     print("\n=== OD split (chirality-aware ECFP8 r=4/4096, single-linkage, Tanimoto dist >= 0.275 between sets) ===")
     splits["OD"] = split_scaffold(smiles)
     for k, v in splits["OD"].items():
+        print(f"  {k}: {len(v)}")
+
+    print("\n=== OD_Murcko split (Murcko scaffold ECFP8 r=4/4096, single-linkage on scaffolds, Tanimoto dist >= 0.275) ===")
+    splits["OD_Murcko"] = split_scaffold_murcko(smiles)
+    for k, v in splits["OD_Murcko"].items():
         print(f"  {k}: {len(v)}")
 
     print("\n=== Cliff pairs (SMILES Levenshtein sim>=0.9, |dPAMPA|>2) ===")

@@ -21,7 +21,7 @@ import torch
 import torch.nn.functional as F
 
 
-def _morgan_fp_array(smiles_list: List[str], n_bits: int = 2048):
+def _morgan_fp_array(smiles_list: List[str], radius: int = 2, n_bits: int = 2048):
     try:
         from rdkit import Chem
         from rdkit.Chem import AllChem
@@ -34,7 +34,7 @@ def _morgan_fp_array(smiles_list: List[str], n_bits: int = 2048):
         if mol is None:
             fps.append(None)
             continue
-        bv = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=n_bits)
+        bv = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=n_bits)
         # Convert to a bool array via the bitvector iterator.
         arr = [int(b) for b in bv.ToBitString()]
         fps.append(arr)
@@ -71,6 +71,8 @@ def build_triplets(
     sim_low: float = 0.4,
     pampa_gap: float = 1.0,
     max_triplets: int = 64,
+    morgan_radius: int = 2,
+    morgan_nbits: int = 2048,
 ) -> List[Tuple[int, int, int]]:
     """Pick (anchor, positive, negative) indices from a batch.
 
@@ -81,7 +83,7 @@ def build_triplets(
 
     Returns up to max_triplets distinct triplets.
     """
-    fps = _morgan_fp_array(smiles)
+    fps = _morgan_fp_array(smiles, radius=morgan_radius, n_bits=morgan_nbits)
     sim = _tanimoto_matrix(fps)
     if sim is None:
         return []

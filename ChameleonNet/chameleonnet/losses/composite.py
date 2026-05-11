@@ -28,6 +28,8 @@ class CompositeLoss:
     triplet_sim_low: float = 0.4
     triplet_pampa_gap: float = 1.0
     triplet_max: int = 64
+    triplet_morgan_radius: int = 2
+    triplet_morgan_nbits: int = 2048
 
 
 def composite_loss(
@@ -67,6 +69,8 @@ def composite_loss(
             sim_low=cfg.triplet_sim_low,
             pampa_gap=cfg.triplet_pampa_gap,
             max_triplets=cfg.triplet_max,
+            morgan_radius=cfg.triplet_morgan_radius,
+            morgan_nbits=cfg.triplet_morgan_nbits,
         )
     else:
         trip = pampa_pred.new_zeros(())

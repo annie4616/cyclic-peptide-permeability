@@ -77,6 +77,7 @@ def _build_loaders(cfg: TrainConfig, vocab: ResidueVocab):
             max_conformers=cfg.max_conformers,
             cache_dir=cfg.cache_dir,
             augment_delta_descriptors=augment,
+            conformer_source=getattr(cfg, "conformer_source", "trajectory"),
         )
 
     train_ds = make_dataset(cfg.split_scheme, "train")
@@ -172,6 +173,10 @@ class Trainer:
             lambda_triplet=cfg.lambda_triplet,
             lambda_residue_psa=cfg.lambda_residue_psa if cfg.model_arch == "v2" else 0.0,
             pampa_baseline=cfg.pampa_baseline,
+            triplet_sim_high=getattr(cfg, "triplet_sim_high", 0.7),
+            triplet_sim_low=getattr(cfg, "triplet_sim_low", 0.4),
+            triplet_morgan_radius=getattr(cfg, "triplet_morgan_radius", 2),
+            triplet_morgan_nbits=getattr(cfg, "triplet_morgan_nbits", 2048),
         )
 
         self.output_dir = Path(cfg.output_dir)
@@ -296,6 +301,27 @@ class Trainer:
                     self.output_dir / "best.pt",
                 )
 
+            # Early stopping on val MAE plateau (disabled when patience<=0).
+            # Don't start counting until warmup is complete — early-epoch val
+            # MAE during a tiny lr is unreliable and can latch the "best" too
+            # early, killing the run before real training begins.
+            patience = getattr(self.cfg, "early_stop_patience", 0)
+            if (
+                patience > 0
+                and epoch >= self.cfg.warmup_epochs + patience
+                and (epoch - self.best_epoch) >= patience
+            ):
+                print(json.dumps({
+                    "early_stop": True,
+                    "epoch": epoch,
+                    "best_epoch": self.best_epoch,
+                    "best_val_mae": self.best_val_mae,
+                    "patience": patience,
+                }))
+                if self._wandb_run is not None:
+                    self._wandb_run.summary["early_stopped_epoch"] = epoch
+                break
+
         (self.output_dir / "history.json").write_text(json.dumps(self.history, indent=2))
         if self._wandb_run is not None:
             self._wandb_run.summary["best_epoch"] = self.best_epoch
@@ -326,6 +352,7 @@ class Trainer:
                 augment_delta_descriptors=(
                     self.cfg.augment_delta_descriptors or self.cfg.model_arch == "v2"
                 ),
+                conformer_source=getattr(self.cfg, "conformer_source", "trajectory"),
             )
             scaler = self.scaler
             orig = ds.__getitem__

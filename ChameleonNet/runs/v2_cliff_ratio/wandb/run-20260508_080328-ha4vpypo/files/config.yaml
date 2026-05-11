@@ -1,0 +1,181 @@
+_wandb:
+    value:
+        cli_version: 0.26.1
+        e:
+            t7z2bfy04qvvmxpk16hc5ma4r639zybx:
+                args:
+                    - --config
+                    - configs/v2_cliff_ratio.yaml
+                cpu_count: 192
+                cpu_count_logical: 384
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "7527832182784"
+                        used: "3079336796160"
+                email: anniejung01@gmail.com
+                executable: /home/sohyun/.conda/envs/chameleonnet/bin/python
+                git:
+                    commit: d0e2568515dd49a23f90e244054c26344984ddcb
+                    remote: https://github.com/annie4616/cyclic-peptide-permeability.git
+                gpu: NVIDIA RTX PRO 6000 Blackwell Server Edition
+                gpu_count: 8
+                gpu_nvidia:
+                    - architecture: Blackwell
+                      cudaCores: 24064
+                      memoryTotal: "102641958912"
+                      name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+                      uuid: GPU-2f20f2ed-8f43-9e26-7338-063e7d40c807
+                    - architecture: Blackwell
+                      cudaCores: 24064
+                      memoryTotal: "102641958912"
+                      name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+                      uuid: GPU-24d7eff6-b9e6-1464-4c6e-2f4b509717d8
+                    - architecture: Blackwell
+                      cudaCores: 24064
+                      memoryTotal: "102641958912"
+                      name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+                      uuid: GPU-5627fe24-9876-a133-45e1-f11e48ac7cb2
+                    - architecture: Blackwell
+                      cudaCores: 24064
+                      memoryTotal: "102641958912"
+                      name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+                      uuid: GPU-a08a48c0-9db9-0e73-69a7-962dd0911416
+                    - architecture: Blackwell
+                      cudaCores: 24064
+                      memoryTotal: "102641958912"
+                      name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+                      uuid: GPU-e1826bfb-cd29-43e7-dd82-7e8f22032e9c
+                    - architecture: Blackwell
+                      cudaCores: 24064
+                      memoryTotal: "102641958912"
+                      name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+                      uuid: GPU-4a1a89d4-06a7-015e-4f9a-034b6de0d6b4
+                    - architecture: Blackwell
+                      cudaCores: 24064
+                      memoryTotal: "102641958912"
+                      name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+                      uuid: GPU-a0283a70-ba1c-de52-5314-7a875cfbca64
+                    - architecture: Blackwell
+                      cudaCores: 24064
+                      memoryTotal: "102641958912"
+                      name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+                      uuid: GPU-42d99e58-6db5-4f2a-acbc-f34e7d1e8e5e
+                host: rpower5
+                memory:
+                    total: "1081499717632"
+                os: Linux-6.8.0-107-generic-x86_64-with-glibc2.39
+                program: -m scripts.train
+                python: CPython 3.13.13
+                root: /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_cliff_ratio
+                startedAt: "2026-05-08T08:03:28.564186Z"
+                writerId: t7z2bfy04qvvmxpk16hc5ma4r639zybx
+        m: []
+        python_version: 3.13.13
+        t:
+            "1":
+                - 1
+                - 5
+                - 11
+                - 41
+                - 49
+                - 53
+            "2":
+                - 1
+                - 5
+                - 11
+                - 41
+                - 49
+                - 53
+            "3":
+                - 2
+                - 13
+                - 16
+                - 61
+                - 62
+            "4": 3.13.13
+            "5": 0.26.1
+            "6": 5.8.0
+            "10":
+                - 20
+            "12": 0.26.1
+            "13": linux-x86_64
+augment_delta_descriptors:
+    value: true
+batch_size:
+    value: 8
+cache_dir:
+    value: /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/.cache_pdb
+conformer_layers:
+    value: 3
+conformer_source:
+    value: trajectory
+csv_path:
+    value: /hdd0/sohyun/cyclic-peptide-permeability/data/CycPeptMPDB-4D_with_assay_descriptors_preprocessed.csv
+descriptor_cols:
+    value: null
+device:
+    value: cuda
+dropout:
+    value: 0.1
+early_stop_patience:
+    value: 15
+epochs:
+    value: 80
+eval_schemes:
+    value:
+        - Cliff_ratio
+grad_clip:
+    value: 1
+head_hidden:
+    value: 256
+hidden_dim:
+    value: 128
+lambda_chameleonic:
+    value: 0.1
+lambda_residue_psa:
+    value: 0.05
+lambda_triplet:
+    value: 0.05
+lr:
+    value: 0.0005
+max_conformers:
+    value: 16
+model_arch:
+    value: v2
+num_workers:
+    value: 4
+output_dir:
+    value: /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_cliff_ratio
+pampa_baseline:
+    value: -8
+pdb_root:
+    value: /hdd0/sohyun/cyclic-peptide-permeability/CycPeptMPDB-4D
+peptideclm_name_or_path:
+    value: aaronfeller/peptideclm-2-mlm-base
+seed:
+    value: 42
+sequence_backend:
+    value: peptideclm
+split_scheme:
+    value: Cliff_ratio
+splits_dir:
+    value: /hdd0/sohyun/cyclic-peptide-permeability/splits
+use_trajectory:
+    value: true
+vocab_csvs:
+    value:
+        - /hdd0/sohyun/cyclic-peptide-permeability/eda/water_residue_vocab.csv
+        - /hdd0/sohyun/cyclic-peptide-permeability/eda/hexane_residue_vocab.csv
+wandb_entity:
+    value: null
+wandb_mode:
+    value: online
+wandb_project:
+    value: chameleonnet-v2
+wandb_run_name:
+    value: v2_cliff_ratio
+warmup_epochs:
+    value: 5
+weight_decay:
+    value: 1e-05
