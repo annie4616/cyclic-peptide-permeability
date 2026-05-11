@@ -33,8 +33,15 @@ class ConformerAttentionPool(nn.Module):
         h: torch.Tensor,  # (M, hidden_dim)  — flat per-conformer embeddings
         batch_index: torch.Tensor,  # (M,) — which sample each conformer belongs to
         batch_size: int,
+        log_prior: torch.Tensor | None = None,  # (M,) — optional log-prior bias (e.g. log cluster size)
     ) -> torch.Tensor:
         scores = self.score(h).squeeze(-1)  # (M,)
+        # Adding log_prior turns the post-softmax weights into a posterior
+        # proportional to prior * exp(score). For cluster centroids the prior
+        # is the cluster size, so larger basins get more weight by default
+        # while the model can still up/down-weight via the learned score.
+        if log_prior is not None:
+            scores = scores + log_prior
 
         # Per-sample softmax: subtract per-batch max for stability, then
         # exponentiate and normalize against the per-sample sum.

@@ -25,6 +25,10 @@
   "lambda_triplet": 0.05,
   "pampa_baseline": -8.0,
   "lambda_residue_psa": 0.05,
+  "triplet_sim_high": 0.7,
+  "triplet_sim_low": 0.4,
+  "triplet_morgan_radius": 2,
+  "triplet_morgan_nbits": 2048,
   "batch_size": 8,
   "num_workers": 4,
   "epochs": 80,
@@ -41,5 +45,5 @@
   "wandb_project": "chameleonnet-v2",
   "wandb_entity": null,
   "wandb_run_name": "v2_cliff_pair",
-  "wandb_mode": "online"
+  "wandb_mode": "disabled"
 }

@@ -1,0 +1,12 @@
+[2026-05-11T05:23:41+00:00] starting v2_id_centw (cfg=configs/v2_id_centw.yaml); GPU=7, threads=32, cpu_bind=192-383
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/245 [00:00<?, ?it/s]Loading weights: 100%|██████████| 245/245 [00:00<00:00, 13132.33it/s]
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/sohyun/.netrc.
+wandb: Currently logged in as: anniejung01 (anniejung01-korea-university) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.26.1
+wandb: Run data is saved locally in /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_id_centw/wandb/run-20260511_052348-47mqm7aw
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run v2_id_centw
+wandb: ⭐️ View project at https://wandb.ai/anniejung01-korea-university/chameleonnet-v2
+wandb: 🚀 View run at https://wandb.ai/anniejung01-korea-university/chameleonnet-v2/runs/47mqm7aw

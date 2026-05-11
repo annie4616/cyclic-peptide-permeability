@@ -111,20 +111,24 @@ def pool_residues_over_conformers(
     res_mask: torch.Tensor,         # (M, R_max) True = pad
     batch_index: torch.Tensor,      # (M,) sample id per conformer
     batch_size: int,
+    conformer_weights: torch.Tensor | None = None,  # (M,) — optional population weight per conformer
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Aggregate per-conformer residue tokens into per-peptide residue tokens.
 
     For each (sample, residue) we average across the conformers that *have*
-    that residue (i.e. residue not padded). This produces a `(B, R_max, F)`
-    tensor and a `(B, R_max)` mask. Conformer-level attention pooling could
-    replace the mean here, but the existing `ConformerAttentionPool` is global
-    (one weight per conformer). We use mean for simplicity in V2 and leave
-    learnable per-residue conformer weights as a future ablation.
+    that residue (i.e. residue not padded). When `conformer_weights` is given
+    we do a population-weighted mean instead (cluster centroids: weight ∝
+    cluster size). Conformer-level attention pooling could replace the mean
+    here, but the existing `ConformerAttentionPool` is global (one weight per
+    conformer). We keep this lightweight.
     """
     M, R, F_dim = h_res.shape
     device = h_res.device
 
     valid = (~res_mask).float().unsqueeze(-1)  # (M, R, 1)
+    if conformer_weights is not None:
+        w = conformer_weights.view(M, 1, 1)  # (M, 1, 1)
+        valid = valid * w
     sum_buf = h_res.new_zeros(batch_size, R, F_dim)
     cnt_buf = h_res.new_zeros(batch_size, R, 1)
 
@@ -133,7 +137,7 @@ def pool_residues_over_conformers(
     bi_cnt = batch_index.view(-1, 1, 1).expand(-1, R, 1)
     cnt_buf.scatter_add_(0, bi_cnt, valid)
 
-    pooled = sum_buf / cnt_buf.clamp_min(1.0)
-    pep_mask = cnt_buf.squeeze(-1) == 0  # (B, R) — residue absent from all conformers
+    pooled = sum_buf / cnt_buf.clamp_min(1e-9)
+    pep_mask = cnt_buf.squeeze(-1) <= 0  # (B, R) — residue absent from all conformers
     pooled = pooled * (~pep_mask).unsqueeze(-1).float()
     return pooled, pep_mask

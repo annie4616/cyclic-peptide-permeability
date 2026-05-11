@@ -12,6 +12,7 @@
   "use_trajectory": true,
   "max_conformers": 16,
   "descriptor_cols": null,
+  "conformer_source": "trajectory",
   "model_arch": "v2",
   "augment_delta_descriptors": true,
   "hidden_dim": 128,
@@ -24,6 +25,10 @@
   "lambda_triplet": 0.05,
   "pampa_baseline": -8.0,
   "lambda_residue_psa": 0.05,
+  "triplet_sim_high": 0.7,
+  "triplet_sim_low": 0.4,
+  "triplet_morgan_radius": 2,
+  "triplet_morgan_nbits": 2048,
   "batch_size": 8,
   "num_workers": 4,
   "epochs": 80,
@@ -31,7 +36,7 @@
   "weight_decay": 1e-05,
   "warmup_epochs": 5,
   "grad_clip": 1.0,
-  "early_stop_patience": 10,
+  "early_stop_patience": 15,
   "eval_schemes": [
     "ID"
   ],

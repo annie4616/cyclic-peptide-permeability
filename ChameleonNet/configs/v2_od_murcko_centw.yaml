@@ -1,0 +1,52 @@
+# ChameleonNet V2 — OD_Murcko split, cluster-centroid conformers.
+
+csv_path: /hdd0/sohyun/cyclic-peptide-permeability/data/CycPeptMPDB-4D_with_assay_descriptors_preprocessed.csv
+pdb_root: /hdd0/sohyun/cyclic-peptide-permeability/CycPeptMPDB-4D
+splits_dir: /hdd0/sohyun/cyclic-peptide-permeability/splits
+vocab_csvs:
+  - /hdd0/sohyun/cyclic-peptide-permeability/eda/water_residue_vocab.csv
+  - /hdd0/sohyun/cyclic-peptide-permeability/eda/hexane_residue_vocab.csv
+cache_dir: /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/.cache_pdb
+output_dir: /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_od_murcko_centw
+
+split_scheme: OD_Murcko
+use_trajectory: true
+conformer_source: centroids
+max_conformers: 24
+
+model_arch: v2
+augment_delta_descriptors: true
+
+hidden_dim: 128
+conformer_layers: 3
+sequence_backend: peptideclm
+peptideclm_name_or_path: aaronfeller/peptideclm-2-mlm-base
+head_hidden: 256
+dropout: 0.1
+
+lambda_chameleonic: 0.1
+lambda_triplet: 0.0
+lambda_residue_psa: 0.05
+pampa_baseline: -8.0
+triplet_morgan_radius: 4
+triplet_morgan_nbits: 4096
+triplet_sim_high: 0.5
+
+batch_size: 8
+num_workers: 4
+epochs: 80
+lr: 0.0005
+weight_decay: 0.00001
+warmup_epochs: 5
+grad_clip: 1.0
+early_stop_patience: 15
+
+eval_schemes:
+  - OD_Murcko
+
+seed: 42
+device: cuda
+
+wandb_project: chameleonnet-v2
+wandb_run_name: v2_od_murcko_centw
+wandb_mode: online

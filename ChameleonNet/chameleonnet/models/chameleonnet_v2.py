@@ -183,10 +183,21 @@ class ChameleonNetV2(nn.Module):
     ) -> Dict[str, torch.Tensor]:
         h_atom = self._atom_features(env)  # (M, Nmax, F)
 
+        # Optional per-conformer population weight (cluster centroid mode).
+        # We pass it as a log-prior only to the GLOBAL attention pool, NOT to
+        # the residue-over-conformer pool: weighting the per-residue mean by
+        # cluster size lets the largest basin dominate the chameleonic-loss
+        # signal asymmetrically between water and hexane (which have different
+        # cluster distributions for the same peptide), and that destabilizes
+        # training. The global attention pool is stable because it uses a
+        # softmax over learned scores already.
+        weights = env.get("weights")
+        log_prior = torch.log(weights.clamp_min(1e-6)) if weights is not None else None
+
         # Global per-conformer mean pool (mirrors V1 exactly).
         valid = (~env["pad_mask"]).float().unsqueeze(-1)
         h_conf = (h_atom * valid).sum(dim=1) / valid.sum(dim=1).clamp_min(1.0)  # (M, F)
-        h_global = pool(h_conf, env["batch_index"], batch_size)  # (B, F)
+        h_global = pool(h_conf, env["batch_index"], batch_size, log_prior=log_prior)  # (B, F)
 
         # Residue pooling — needs per-atom residue position id.
         res_pos = env.get("res_pos")

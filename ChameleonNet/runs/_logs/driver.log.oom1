@@ -1,0 +1,114 @@
+[2026-05-08T03:35:18+00:00] starting v2_id (cfg=configs/v2_id.yaml); threads=32, cpu_bind=0-191
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/245 [00:00<?, ?it/s]Loading weights: 100%|██████████| 245/245 [00:00<00:00, 13055.41it/s]
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/sohyun/.netrc.
+wandb: Currently logged in as: anniejung01 (anniejung01-korea-university) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.26.1
+wandb: Run data is saved locally in /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_id/wandb/run-20260508_033524-y4xvhywv
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run v2_id
+wandb: ⭐️ View project at https://wandb.ai/anniejung01-korea-university/chameleonnet-v2
+wandb: 🚀 View run at https://wandb.ai/anniejung01-korea-university/chameleonnet-v2/runs/y4xvhywv
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:26] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:27] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+[03:35:28] DEPRECATION WARNING: please use MorganGenerator
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/scripts/train.py", line 72, in <module>
+    main()
+    ~~~~^^
+  File "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/scripts/train.py", line 66, in main
+    trainer.fit()
+    ~~~~~~~~~~~^^
+  File "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/chameleonnet/training/trainer.py", line 273, in fit
+    train_stats = self._epoch_pass(self.train_loader, train=True)
+  File "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/chameleonnet/training/trainer.py", line 252, in _epoch_pass
+    res = self._step(batch, train=train)
+  File "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/chameleonnet/training/trainer.py", line 210, in _step
+    outputs = self.model(batch)
+  File "/home/sohyun/.conda/envs/chameleonnet/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/sohyun/.conda/envs/chameleonnet/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/chameleonnet/models/chameleonnet_v2.py", line 226, in forward
+    env_h = self._encode_environment(hexane, self.hexane_pool, max_residues, batch_size)
+  File "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/chameleonnet/models/chameleonnet_v2.py", line 184, in _encode_environment
+    h_atom = self._atom_features(env)  # (M, Nmax, F)
+  File "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/chameleonnet/models/chameleonnet_v2.py", line 173, in _atom_features
+    h = layer(h, env["coords"], pad_mask)
+  File "/home/sohyun/.conda/envs/chameleonnet/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/sohyun/.conda/envs/chameleonnet/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/chameleonnet/models/conformer_encoder.py", line 69, in forward
+    m = m * edge_mask * self_mask
+        ~~~~~~~~~~~~~~^~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.70 GiB. GPU 0 has a total capacity of 94.97 GiB of which 543.75 MiB is free. Including non-PyTorch memory, this process has 94.43 GiB memory in use. Of the allocated memory 77.42 GiB is allocated by PyTorch, and 16.37 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mv2_id[0m at: [34mhttps://wandb.ai/anniejung01-korea-university/chameleonnet-v2/runs/y4xvhywv[0m
+[1;34mwandb[0m: Find logs at: [1;35mruns/v2_id/wandb/run-20260508_033524-y4xvhywv/logs[0m
