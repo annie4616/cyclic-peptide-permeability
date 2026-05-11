@@ -45,3 +45,5 @@ Thumbs.db
 !.env.example
 *.pem
 *.key
+
+ ChameleonNet/runs/_logs/
