@@ -16,9 +16,9 @@
 
 set -euo pipefail
 
-ROOT=/hdd0/sohyun/cyclic-peptide-permeability
+ROOT=/ssd0/sohyun/cyclic_peptide/cyclic_peptide_permeability
 MCP="$ROOT/MultiCycPermea"
-VENV="/home/sohyun/.conda/envs/chameleonnet"
+VENV="$ROOT/mcp_env"
 DL="$MCP/DL"
 
 SPLIT=${SPLIT:-ID}
