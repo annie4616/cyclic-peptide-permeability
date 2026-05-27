@@ -98,7 +98,12 @@ class ChameleonNet(nn.Module):
         env: Dict[str, torch.Tensor],
         pool: ConformerAttentionPool,
     ) -> torch.Tensor:
-        """Run the shared 3D encoder + the env-specific attention pooler."""
+        """Run the shared 3D encoder + the env-specific attention pooler.
+
+        When `env` carries per-conformer cluster weights (centroid mode), we
+        pass them in as a log-prior so larger basins get more attention by
+        default — same path V2 uses.
+        """
         h = self.conformer_encoder(
             coords=env["coords"],
             z=env["z"],
@@ -106,7 +111,9 @@ class ChameleonNet(nn.Module):
             pad_mask=env["pad_mask"],
         )
         batch_size = int(env["sample_K"].shape[0])
-        return pool(h, env["batch_index"], batch_size)
+        weights = env.get("weights")
+        log_prior = torch.log(weights.clamp_min(1e-6)) if weights is not None else None
+        return pool(h, env["batch_index"], batch_size, log_prior=log_prior)
 
     def forward(self, batch: Dict) -> Dict[str, torch.Tensor]:
         h_water = self.encode_environment(batch["water"], self.water_pool)

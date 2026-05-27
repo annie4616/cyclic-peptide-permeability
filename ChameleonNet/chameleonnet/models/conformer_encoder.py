@@ -32,13 +32,15 @@ class _EGNNLayer(nn.Module):
     """
 
     def __init__(self, hidden_dim: int, edge_hidden: int = 64):
+        # 노드 수에 따라 agg의 크기가 엄청 커지거나 부호가 상쇄되어 학습이 불안정해질 수 있어서 마지막 SiLU를 넣음
         super().__init__()
         self.edge_mlp = nn.Sequential(
-            nn.Linear(2 * hidden_dim + 1, edge_hidden),
+            nn.Linear(2 * hidden_dim + 1, edge_hidden), # h_i, h_j, d2
             nn.SiLU(),
             nn.Linear(edge_hidden, edge_hidden),
             nn.SiLU(),
         )
+        # 출력의 활성화를 두지 않는게 관행이라고 함.
         self.node_mlp = nn.Sequential(
             nn.Linear(hidden_dim + edge_hidden, hidden_dim),
             nn.SiLU(),
@@ -79,7 +81,7 @@ class ConformerEncoder(nn.Module):
     """Encodes a flat batch of conformers (sum_K, Nmax, 3) into per-conformer vectors.
 
     Inputs (from `_pad_atom_dim`):
-      coords:   (M, Nmax, 3)
+      coords:   (M, Nmax, 3)    M개 conformer, 최대 원자 수, 3D 좌표
       z:        (M, Nmax)        atomic numbers (0 = pad)
       res:      (M, Nmax)        residue ids (0 = pad)
       pad_mask: (M, Nmax) bool   True = padding atom

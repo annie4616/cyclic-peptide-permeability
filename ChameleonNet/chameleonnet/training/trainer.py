@@ -23,6 +23,7 @@ from torch.utils.data import DataLoader
 from ..data.dataset import (
     ChameleonDataset,
     DEFAULT_DESCRIPTORS,
+    EXTENDED_DESCRIPTORS,
     chameleon_collate,
 )
 from ..data.residue_vocab import ResidueVocab
@@ -62,7 +63,12 @@ def _move_batch(batch: dict, device: torch.device) -> dict:
 
 
 def _build_loaders(cfg: TrainConfig, vocab: ResidueVocab):
-    descriptor_cols = cfg.descriptor_cols or DEFAULT_DESCRIPTORS
+    if cfg.descriptor_cols:
+        descriptor_cols = cfg.descriptor_cols
+    elif getattr(cfg, "use_extended_descriptors", False):
+        descriptor_cols = EXTENDED_DESCRIPTORS
+    else:
+        descriptor_cols = DEFAULT_DESCRIPTORS
     augment = cfg.augment_delta_descriptors or cfg.model_arch == "v2"
 
     def make_dataset(scheme: str, fold: str) -> ChameleonDataset:
@@ -175,8 +181,8 @@ class Trainer:
             pampa_baseline=cfg.pampa_baseline,
             triplet_sim_high=getattr(cfg, "triplet_sim_high", 0.7),
             triplet_sim_low=getattr(cfg, "triplet_sim_low", 0.4),
-            triplet_morgan_radius=getattr(cfg, "triplet_morgan_radius", 2),
-            triplet_morgan_nbits=getattr(cfg, "triplet_morgan_nbits", 2048),
+            triplet_morgan_radius=getattr(cfg, "triplet_morgan_radius", 4),
+            triplet_morgan_nbits=getattr(cfg, "triplet_morgan_nbits", 4096),
         )
 
         self.output_dir = Path(cfg.output_dir)

@@ -29,7 +29,8 @@ class TrainConfig:
     # data
     use_trajectory: bool = True
     max_conformers: int = 16
-    descriptor_cols: Optional[List[str]] = None  # None → DEFAULT_DESCRIPTORS
+    descriptor_cols: Optional[List[str]] = None  # None → DEFAULT_DESCRIPTORS (or EXTENDED if flag below)
+    use_extended_descriptors: bool = False  # add 17 RDKit features after the 11 MD-derived ones
     conformer_source: str = "trajectory"  # "trajectory" | "centroids"
 
     # model

@@ -57,7 +57,7 @@ def main() -> None:
                         help="Skip the test-set evaluation pass at end.")
     args, extra = parser.parse_known_args()
 
-    # yaml 파일 안의 경로들과  반환
+    # yaml 파일 안의 경로들과  반환 
     cfg = load_config(args.config) if args.config else TrainConfig()
     # argparse를 정의하지 않고서도 config 넣을 수 있음
     cfg = _override_config(cfg, extra)

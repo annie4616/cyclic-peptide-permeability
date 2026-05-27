@@ -281,3 +281,255 @@ Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF
 wrote /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_od_murcko_cent/test_metrics_by_group.json
 ----
 [2026-05-11T07:12:42+00:00] eval v2_cliff_ratio_cent
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/245 [00:00<?, ?it/s]Loading weights: 100%|██████████| 245/245 [00:00<00:00, 28794.12it/s]
+[Cliff_ratio]
+{
+  "all": {
+    "mae": 0.31247419566218315,
+    "mse": 0.21330504613483864,
+    "r2": 0.5793148978046452,
+    "pearson": 0.7613802001378294,
+    "n": 493
+  },
+  "Circle_6": {
+    "mae": 0.280167928216053,
+    "mse": 0.16734008921493412,
+    "r2": 0.7311745573177049,
+    "pearson": 0.855675797342543,
+    "n": 171
+  },
+  "Circle_7": {
+    "mae": 0.28419827879144904,
+    "mse": 0.13455773336159182,
+    "r2": 0.39706045052469363,
+    "pearson": 0.637474173428414,
+    "n": 178
+  },
+  "Lariat_10": {
+    "mae": 0.38579006327523124,
+    "mse": 0.3652288607663776,
+    "r2": 0.44297582405774916,
+    "pearson": 0.6731335593705928,
+    "n": 144
+  }
+}
+
+wrote /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_cliff_ratio_cent/test_metrics_by_group.json
+----
+[2026-05-11T07:13:29+00:00] eval v2_cliff_pair_cent
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/245 [00:00<?, ?it/s]Loading weights: 100%|██████████| 245/245 [00:00<00:00, 14583.60it/s]
+[Cliff_pair]
+{
+  "all": {
+    "mae": 0.38195990704475563,
+    "mse": 0.2442307429776994,
+    "r2": 0.49543932233436505,
+    "pearson": 0.7293623875079033,
+    "n": 470
+  },
+  "Circle_6": {
+    "mae": 0.43483383059501646,
+    "mse": 0.29306023098996076,
+    "r2": 0.530716074543128,
+    "pearson": 0.7552375456789164,
+    "n": 240
+  },
+  "Circle_7": {
+    "mae": 0.3312200840717087,
+    "mse": 0.1983129645236837,
+    "r2": 0.40823606945974644,
+    "pearson": 0.6712939622616007,
+    "n": 217
+  },
+  "Lariat_10": {
+    "mae": 0.25279067112849307,
+    "mse": 0.10923695848375176,
+    "r2": -0.2592627209855296,
+    "pearson": 0.6163576424774689,
+    "n": 13
+  }
+}
+
+wrote /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_cliff_pair_cent/test_metrics_by_group.json
+----
+[2026-05-11T07:14:12+00:00] eval v2_id_tri
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/245 [00:00<?, ?it/s]Loading weights: 100%|██████████| 245/245 [00:00<00:00, 14722.97it/s]
+[ID]
+{
+  "all": {
+    "mae": 0.31397372629584336,
+    "mse": 0.218215956860511,
+    "r2": 0.4674459993527048,
+    "pearson": 0.6910417811466796,
+    "n": 492
+  },
+  "Circle_6": {
+    "mae": 0.31220526461834675,
+    "mse": 0.23802539536745349,
+    "r2": 0.6366282598336803,
+    "pearson": 0.8055906891912996,
+    "n": 143
+  },
+  "Circle_7": {
+    "mae": 0.24341669029363708,
+    "mse": 0.12156699608539887,
+    "r2": 0.4059206564670188,
+    "pearson": 0.6479397618281166,
+    "n": 179
+  },
+  "Lariat_10": {
+    "mae": 0.38975372314453127,
+    "mse": 0.3033183937561128,
+    "r2": 0.2728808398375441,
+    "pearson": 0.5396189663677902,
+    "n": 170
+  }
+}
+
+wrote /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_id_tri/test_metrics_by_group.json
+----
+[2026-05-11T07:14:45+00:00] eval v2_od_tri
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/245 [00:00<?, ?it/s]Loading weights: 100%|██████████| 245/245 [00:00<00:00, 14344.40it/s]
+[OD]
+{
+  "all": {
+    "mae": 0.38182319913591656,
+    "mse": 0.29449141904316484,
+    "r2": 0.2643829014308373,
+    "pearson": 0.5992403726448601,
+    "n": 490
+  },
+  "Circle_6": {
+    "mae": 0.40389215235678566,
+    "mse": 0.35235423089798873,
+    "r2": 0.288285929014352,
+    "pearson": 0.6120155791239809,
+    "n": 302
+  },
+  "Circle_7": {
+    "mae": 0.34369874000549316,
+    "mse": 0.1974284266845548,
+    "r2": 0.12918301220026684,
+    "pearson": 0.5597517308782072,
+    "n": 186
+  },
+  "Lariat_10": {
+    "mae": 0.5949859619140625,
+    "mse": 0.5840651183154932,
+    "r2": -3.15335195246573,
+    "pearson": -1.0,
+    "n": 2
+  }
+}
+
+wrote /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_od_tri/test_metrics_by_group.json
+----
+[2026-05-11T07:15:14+00:00] eval v2_od_murcko_tri
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/245 [00:00<?, ?it/s]Loading weights: 100%|██████████| 245/245 [00:00<00:00, 14064.06it/s]
+[OD_Murcko]
+{
+  "all": {
+    "mae": 0.43880284277947396,
+    "mse": 0.5078028848015282,
+    "r2": 0.1398767871220532,
+    "pearson": 0.5700317249747474,
+    "n": 455
+  },
+  "Circle_6": {
+    "mae": 0.45428577831813266,
+    "mse": 0.5391073737558362,
+    "r2": 0.14350578914783452,
+    "pearson": 0.5743481707727718,
+    "n": 420
+  },
+  "Circle_7": {
+    "mae": 0.2530076163155692,
+    "mse": 0.1321490173498335,
+    "r2": -0.10502307362040697,
+    "pearson": 0.22646763628872663,
+    "n": 35
+  }
+}
+
+wrote /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_od_murcko_tri/test_metrics_by_group.json
+----
+[2026-05-11T07:15:44+00:00] eval v2_cliff_ratio_tri
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/245 [00:00<?, ?it/s]Loading weights: 100%|██████████| 245/245 [00:00<00:00, 13876.80it/s]
+[Cliff_ratio]
+{
+  "all": {
+    "mae": 0.308686293162874,
+    "mse": 0.2184530697588867,
+    "r2": 0.5691618475902693,
+    "pearson": 0.7622180294389059,
+    "n": 493
+  },
+  "Circle_6": {
+    "mae": 0.31260959167926633,
+    "mse": 0.2025704347828935,
+    "r2": 0.6745783568041959,
+    "pearson": 0.8232733498258472,
+    "n": 171
+  },
+  "Circle_7": {
+    "mae": 0.27434821878926136,
+    "mse": 0.12760359859733147,
+    "r2": 0.42822122275980723,
+    "pearson": 0.6734823872077292,
+    "n": 178
+  },
+  "Lariat_10": {
+    "mae": 0.3464730514420403,
+    "mse": 0.3496137395342455,
+    "r2": 0.466791028634724,
+    "pearson": 0.6997782269698427,
+    "n": 144
+  }
+}
+
+wrote /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_cliff_ratio_tri/test_metrics_by_group.json
+----
+[2026-05-11T07:16:14+00:00] eval v2_cliff_pair_tri
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/245 [00:00<?, ?it/s]Loading weights: 100%|██████████| 245/245 [00:00<00:00, 11777.03it/s]
+[Cliff_pair]
+{
+  "all": {
+    "mae": 0.37667774849749625,
+    "mse": 0.23768096466543923,
+    "r2": 0.5089706269666219,
+    "pearson": 0.7274251275158048,
+    "n": 470
+  },
+  "Circle_6": {
+    "mae": 0.41218868692715965,
+    "mse": 0.28317495111550006,
+    "r2": 0.5465455950756688,
+    "pearson": 0.7645505427583038,
+    "n": 240
+  },
+  "Circle_7": {
+    "mae": 0.3398737314109978,
+    "mse": 0.1905261124180671,
+    "r2": 0.43147195935541194,
+    "pearson": 0.6823586603395663,
+    "n": 217
+  },
+  "Lariat_10": {
+    "mae": 0.3354351703937237,
+    "mse": 0.18491528694737377,
+    "r2": -1.131667986964373,
+    "pearson": 0.6261518260992861,
+    "n": 13
+  }
+}
+
+wrote /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v2_cliff_pair_tri/test_metrics_by_group.json
+----
+[2026-05-11T07:16:44+00:00] all eval_by_group complete
