@@ -19,8 +19,9 @@ Settings (following MultiCycPermea, Wang et al. 2025):
                   are extracted, fingerprinted with ECFP8 (r=4, 4096 bits,
                   chirality-blind: scaffolds have no side chains so stereo
                   contributes little), pairwise Tanimoto-clustered with
-                  single linkage at distance 0.275 (same threshold as
-                  molecule-level OD), and each scaffold cluster is assigned
+                  single linkage at distance 0.300 (the largest round,
+                  paper-reportable threshold that still bin-packs into
+                  80/10/10), and each scaffold cluster is assigned
                   wholesale to one split. Cyclic peptides often collapse
                   to a small number of macrocyclic skeletons, so this split
                   tests generalisation to *unseen ring systems*
@@ -57,11 +58,9 @@ from rdkit.Chem.Scaffolds import MurckoScaffold
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import squareform
 
-from cliffs import get_levenshtein_matrix
-
 RDLogger.DisableLog("rdApp.*")
 
-ROOT = "/hdd0/sohyun/cyclic-peptide-permeability"
+ROOT = "/ssd0/sohyun/cyclic_peptide/cyclic_peptide_permeability"
 CSV = os.path.join(ROOT, "data", "CycPeptMPDB-4D_with_assay_descriptors_preprocessed.csv")
 OUT = os.path.join(ROOT, "splits")
 os.makedirs(OUT, exist_ok=True)
@@ -235,7 +234,7 @@ def scaffold_fp(scaffold_smi: str, radius: int = 4, nbits: int = 4096):
     return AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=nbits)
 
 
-def split_scaffold_murcko(smiles_list, od_thresh: float = 0.275):
+def split_scaffold_murcko(smiles_list, od_thresh: float = 0.300):
     """Murcko-scaffold-based OD split.
 
     Pipeline:
@@ -258,18 +257,29 @@ def split_scaffold_murcko(smiles_list, od_thresh: float = 0.275):
     while the full-molecule OD split tests generalisation to unseen
     side-chain patterns within similar scaffolds.
 
-    Why t=0.275 (matches the molecule-level OD threshold): with r=4/4096
-    the scaffold-distance median is ~0.69 and single-linkage stays well-
-    behaved up to t~0.30. Empirical sweep on 356 unique scaffolds:
-        t=0.275 -> 74 clusters, largest=1098 (22.3%)  [used here]
-        t=0.300 -> 35 clusters, largest=1098 (22.3%)
-        t=0.350 -> 13 clusters, largest=3330 (67.6%)  [val/test starve]
-        t=0.450 ->  3 clusters, largest=3613 (73.4%)  [degenerate]
-    Picking 0.275 keeps OD and OD_Murcko thresholds aligned so that the
-    "scaffold-OD vs molecule-OD" comparison is interpretable: both enforce
-    inter-set Tanimoto distance >= 0.275 in their respective spaces.
+    Why t=0.300: with r=4/4096 the scaffold-distance median is ~0.69 and
+    single-linkage stays well-behaved up to t~0.30. Empirical sweep on the
+    unique scaffolds (sizes are scaffold *clusters* / molecule counts):
+        t=0.275 -> 74 clusters, largest=1098 (22.3%), test/val 455/441
+        t=0.285 -> 53 clusters, largest=1098,         test/val 442/462
+        t=0.300 -> 35 clusters, largest=1098 (22.3%), test/val 490/373  [used here]
+        t=0.305 -> 29 clusters, largest=1147,         test/val 428/379  (last feasible)
+        t=0.310 -> 24 clusters, largest=1311,         val too small
+        t=0.315 -> 19 clusters, largest=1560,         val empties out
+        t=0.350 -> 13 clusters, largest=3330 (67.6%), val/test starve
+        t=0.450 ->  3 clusters, largest=3613 (73.4%), degenerate
+    0.300 is the chosen value: it is a round, paper-reportable threshold,
+    sits comfortably inside the feasible region (0.305 still packs into
+    80/10/10), and is the *largest* such round number. A val of ~373 is
+    ample for model selection; going below 0.300 only buys a larger val at
+    the cost of a non-round, harder-to-justify threshold. Both OD and
+    OD_Murcko enforce inter-set Tanimoto distance >= their threshold in
+    their respective spaces (OD molecule-level at 0.275, OD_Murcko
+    scaffold-level at 0.300); the splits are reported independently rather
+    than required to share a single cutoff.
     (At r=2/2048 chaining started already at t~0.15; r=4/4096 unlocks the
-    full 0.275 threshold for scaffolds too.)
+    full threshold for scaffolds too. The previous 0.275 OD_Murcko split
+    is archived as splits/OD_Murcko_0.275_*_ids.csv.)
     """
     print("[OD-Murcko] computing Murcko scaffolds...")
     scaffolds = [murcko_scaffold_smiles(s) for s in smiles_list]
@@ -382,6 +392,7 @@ def find_cliff_pairs(smiles_list, pampa, sim_thresh=0.9, dy_thresh=2.0):
     fold-change (which is meaningless for negative values).
     """
     print("[Cliff] computing pairwise SMILES Levenshtein similarity...")
+    from cliffs import get_levenshtein_matrix  # lazy: only the Cliff splits need Levenshtein
     sim_mat = get_levenshtein_matrix(smiles_list)
     pampa = np.asarray(pampa, dtype=np.float32)
     n = len(smiles_list)
@@ -521,7 +532,7 @@ def main():
     for k, v in splits["OD"].items():
         print(f"  {k}: {len(v)}")
 
-    print("\n=== OD_Murcko split (Murcko scaffold ECFP8 r=4/4096, single-linkage on scaffolds, Tanimoto dist >= 0.275) ===")
+    print("\n=== OD_Murcko split (Murcko scaffold ECFP8 r=4/4096, single-linkage on scaffolds, Tanimoto dist >= 0.300) ===")
     splits["OD_Murcko"] = split_scaffold_murcko(smiles)
     for k, v in splits["OD_Murcko"].items():
         print(f"  {k}: {len(v)}")
