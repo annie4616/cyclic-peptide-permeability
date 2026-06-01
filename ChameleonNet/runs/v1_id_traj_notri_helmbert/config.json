@@ -7,7 +7,7 @@
     "/hdd0/sohyun/cyclic-peptide-permeability/eda/hexane_residue_vocab.csv"
   ],
   "cache_dir": "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/.cache_pdb",
-  "output_dir": "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v1_id_traj_notri",
+  "output_dir": "/hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/v1_id_traj_notri_helmbert",
   "split_scheme": "ID",
   "use_trajectory": true,
   "max_conformers": 16,
@@ -18,8 +18,9 @@
   "augment_delta_descriptors": false,
   "hidden_dim": 128,
   "conformer_layers": 3,
-  "sequence_backend": "peptideclm",
-  "peptideclm_name_or_path": "aaronfeller/peptideclm-2-mlm-base",
+  "sequence_backend": "helmbert",
+  "peptideclm_name_or_path": null,
+  "helmbert_name_or_path": "Flansma/helm-bert",
   "head_hidden": 256,
   "dropout": 0.1,
   "lambda_chameleonic": 0.1,
@@ -45,6 +46,6 @@
   "device": "cuda",
   "wandb_project": "chameleonnet-v2",
   "wandb_entity": null,
-  "wandb_run_name": "v1_id_traj_notri",
-  "wandb_mode": "disabled"
+  "wandb_run_name": "v1_id_traj_notri_helmbert",
+  "wandb_mode": "online"
 }

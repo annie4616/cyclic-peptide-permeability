@@ -96,6 +96,7 @@ class ChameleonNetV2(nn.Module):
         conformer_layers: int = 3,
         sequence_backend: str = "learned",
         peptideclm_name_or_path: Optional[str] = None,
+        helmbert_name_or_path: Optional[str] = None,
         head_hidden: int = 256,
         dropout: float = 0.1,
     ):
@@ -129,6 +130,7 @@ class ChameleonNetV2(nn.Module):
             hidden_dim=hidden_dim,
             backend=sequence_backend,
             peptideclm_name_or_path=peptideclm_name_or_path,
+            helmbert_name_or_path=helmbert_name_or_path,
         )
         self.descriptor_mlp = DescriptorMLP(in_dim=descriptor_dim, hidden_dim=hidden_dim)
 
@@ -247,7 +249,9 @@ class ChameleonNetV2(nn.Module):
         h_chameleon = cham["h_chameleon"]  # (B, F)
 
         h_seq = self.sequence_encoder(
-            sequences=batch["sequences"], smiles=batch.get("smiles")
+            sequences=batch["sequences"],
+            smiles=batch.get("smiles"),
+            helms=batch.get("helms"),
         )
         h_desc = self.descriptor_mlp(batch["descriptors"])
 

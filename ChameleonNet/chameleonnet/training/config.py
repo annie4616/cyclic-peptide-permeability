@@ -38,8 +38,9 @@ class TrainConfig:
     augment_delta_descriptors: bool = False  # append derived Δ-features (V2 default on)
     hidden_dim: int = 128
     conformer_layers: int = 3
-    sequence_backend: str = "learned"  # "learned" | "peptideclm"
+    sequence_backend: str = "learned"  # "learned" | "peptideclm" | "helmbert"
     peptideclm_name_or_path: Optional[str] = None
+    helmbert_name_or_path: Optional[str] = None
     head_hidden: int = 256
     dropout: float = 0.1
 

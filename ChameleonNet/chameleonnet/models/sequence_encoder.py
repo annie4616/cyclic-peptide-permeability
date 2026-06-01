@@ -1,15 +1,18 @@
 """Sequence encoder branch.
 
-Two modes:
+Three modes:
   1. peptideclm — wrap a HuggingFace PeptideCLM checkpoint (or any masked-LM
      SMILES encoder) and pool its [CLS]/mean output. This is the path that
      reuses MCPerm's pretrained representations.
-  2. learned    — fall back to a small Transformer over the residue id
+  2. helmbert   — wrap a HuggingFace HELM-BERT checkpoint that tokenizes raw
+     HELM strings (Flansma/helm-bert). Same pooling path as peptideclm but
+     the batch must carry "helms" instead of "smiles".
+  3. learned    — fall back to a small Transformer over the residue id
      sequence (using our ResidueVocab). Useful for a self-contained run that
      doesn't require downloading PeptideCLM weights.
 
-We default to mode 2 to keep this module importable even on a fresh machine,
-and gate mode 1 behind transformers being installed and a checkpoint being
+We default to mode 3 to keep this module importable even on a fresh machine,
+and gate modes 1/2 behind transformers being installed and a checkpoint being
 provided. The trainer config selects between them.
 """
 
@@ -77,6 +80,7 @@ class SequenceEncoder(nn.Module):
         hidden_dim: int = 128,
         backend: str = "learned",
         peptideclm_name_or_path: Optional[str] = None,
+        helmbert_name_or_path: Optional[str] = None,
     ):
         super().__init__()
         self.backend = backend
@@ -84,24 +88,28 @@ class SequenceEncoder(nn.Module):
 
         if backend == "learned":
             self.impl = _LearnedSequenceEncoder(vocab=vocab, hidden_dim=hidden_dim)
-        elif backend == "peptideclm":
+        elif backend in {"peptideclm", "helmbert"}:
             try:
                 from transformers import AutoModel, AutoTokenizer
             except ImportError as e:
                 raise ImportError(
-                    "backend='peptideclm' requires `transformers`. Install it "
+                    f"backend={backend!r} requires `transformers`. Install it "
                     "or set backend='learned'."
                 ) from e
-            if peptideclm_name_or_path is None:
-                raise ValueError(
-                    "peptideclm_name_or_path must be provided when backend='peptideclm'."
-                )
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                peptideclm_name_or_path, trust_remote_code=True
-            )
-            self.lm = AutoModel.from_pretrained(
-                peptideclm_name_or_path, trust_remote_code=True
-            )
+            if backend == "peptideclm":
+                name = peptideclm_name_or_path
+                if name is None:
+                    raise ValueError(
+                        "peptideclm_name_or_path must be provided when backend='peptideclm'."
+                    )
+            else:
+                name = helmbert_name_or_path
+                if name is None:
+                    raise ValueError(
+                        "helmbert_name_or_path must be provided when backend='helmbert'."
+                    )
+            self.tokenizer = AutoTokenizer.from_pretrained(name, trust_remote_code=True)
+            self.lm = AutoModel.from_pretrained(name, trust_remote_code=True)
             # Standard HF models expose `hidden_size`; PeptideCLM-2 uses `embed_dim`.
             lm_hidden = (
                 getattr(self.lm.config, "hidden_size", None)
@@ -110,7 +118,7 @@ class SequenceEncoder(nn.Module):
             )
             if lm_hidden is None:
                 raise ValueError(
-                    f"Could not determine hidden dim of {peptideclm_name_or_path}; "
+                    f"Could not determine hidden dim of {name}; "
                     f"expected one of hidden_size/embed_dim/d_model on its config."
                 )
             self.proj = nn.Linear(lm_hidden, hidden_dim)
@@ -121,16 +129,23 @@ class SequenceEncoder(nn.Module):
         self,
         sequences: List[List[str]],
         smiles: Optional[List[str]] = None,
+        helms: Optional[List[str]] = None,
     ) -> torch.Tensor:
         if self.backend == "learned":
             return self.impl(sequences)
 
-        # PeptideCLM operates on SMILES tokens.
-        if smiles is None:
-            raise ValueError("backend='peptideclm' needs smiles in the batch.")
+        if self.backend == "peptideclm":
+            if smiles is None:
+                raise ValueError("backend='peptideclm' needs smiles in the batch.")
+            inputs = smiles
+        else:  # helmbert
+            if helms is None:
+                raise ValueError("backend='helmbert' needs helms in the batch.")
+            inputs = helms
+
         device = next(self.lm.parameters()).device
         toks = self.tokenizer(
-            smiles, padding=True, truncation=True, return_tensors="pt"
+            inputs, padding=True, truncation=True, return_tensors="pt"
         ).to(device)
         out = self.lm(**toks)
         # Use mean pooling over non-pad tokens — robust to whether the model

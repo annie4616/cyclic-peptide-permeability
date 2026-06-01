@@ -166,6 +166,7 @@ class Trainer:
             conformer_layers=cfg.conformer_layers,
             sequence_backend=cfg.sequence_backend,
             peptideclm_name_or_path=cfg.peptideclm_name_or_path,
+            helmbert_name_or_path=cfg.helmbert_name_or_path,
             head_hidden=cfg.head_hidden,
             dropout=cfg.dropout,
         ).to(self.device)

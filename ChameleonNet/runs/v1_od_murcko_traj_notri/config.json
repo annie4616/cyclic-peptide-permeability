@@ -46,5 +46,5 @@
   "wandb_project": "chameleonnet-v2",
   "wandb_entity": null,
   "wandb_run_name": "v1_od_murcko_traj_notri",
-  "wandb_mode": "online"
+  "wandb_mode": "disabled"
 }
