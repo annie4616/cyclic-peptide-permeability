@@ -110,6 +110,14 @@ class SequenceEncoder(nn.Module):
                     )
             self.tokenizer = AutoTokenizer.from_pretrained(name, trust_remote_code=True)
             self.lm = AutoModel.from_pretrained(name, trust_remote_code=True)
+            # Freeze the pretrained backbone so only the projection head learns.
+            # This mirrors the residue-embedding branch (which uses a frozen
+            # PeptideCLM-2 lookup) and keeps the two branches in a consistent
+            # representation space. Eval mode disables dropout in the LM so the
+            # frozen forward is deterministic.
+            for p in self.lm.parameters():
+                p.requires_grad_(False)
+            self.lm.eval()
             # Standard HF models expose `hidden_size`; PeptideCLM-2 uses `embed_dim`.
             lm_hidden = (
                 getattr(self.lm.config, "hidden_size", None)
@@ -147,9 +155,12 @@ class SequenceEncoder(nn.Module):
         toks = self.tokenizer(
             inputs, padding=True, truncation=True, return_tensors="pt"
         ).to(device)
-        out = self.lm(**toks)
-        # Use mean pooling over non-pad tokens — robust to whether the model
-        # was trained with a [CLS] token or not.
-        mask = toks["attention_mask"].unsqueeze(-1).float()
-        h = (out.last_hidden_state * mask).sum(1) / mask.sum(1).clamp_min(1.0)
+        # The LM is frozen — force eval (model.train() would otherwise re-enable
+        # dropout on it) and skip the autograd graph for the backbone so we
+        # don't allocate activations we'll never differentiate through.
+        self.lm.eval()
+        with torch.no_grad():
+            out = self.lm(**toks)
+            mask = toks["attention_mask"].unsqueeze(-1).float()
+            h = (out.last_hidden_state * mask).sum(1) / mask.sum(1).clamp_min(1.0)
         return self.proj(h)

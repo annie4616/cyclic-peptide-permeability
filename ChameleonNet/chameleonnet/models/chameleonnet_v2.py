@@ -99,6 +99,7 @@ class ChameleonNetV2(nn.Module):
         helmbert_name_or_path: Optional[str] = None,
         head_hidden: int = 256,
         dropout: float = 0.1,
+        residue_emb_path: Optional[str] = None,
     ):
         super().__init__()
         self.hidden_dim = hidden_dim
@@ -108,6 +109,8 @@ class ChameleonNetV2(nn.Module):
             hidden_dim=hidden_dim,
             num_layers=conformer_layers,
             residue_vocab_size=len(vocab),
+            residue_emb_path=residue_emb_path,
+            residue_vocab_tokens=list(vocab._tokens),
         )
         # We need atom-level h to do residue pooling. The current
         # ConformerEncoder mean-pools internally; we monkeypatch by calling a
@@ -164,10 +167,12 @@ class ChameleonNetV2(nn.Module):
 
         The vendored ConformerEncoder pools internally; we replicate its inner
         pipeline here so we can hand the atom-level tensor to the residue
-        pooler. Keeps V1 untouched at the cost of a tiny code duplication.
+        pooler. We go through `enc.atom_features` so the pretrained-residue
+        projection (when configured) is applied here exactly as it would be
+        inside `enc.forward`.
         """
         enc = self.conformer_encoder
-        h = enc.atom_embed(env["z"]) + enc.res_embed(env["res"])
+        h = enc.atom_features(env["z"], env["res"])
         h = enc.input_mix(h)
         pad_mask = env["pad_mask"]
         h = h * (~pad_mask).float().unsqueeze(-1)

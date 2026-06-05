@@ -25,8 +25,10 @@ from ..data.dataset import (
     DEFAULT_DESCRIPTORS,
     EXTENDED_DESCRIPTORS,
     chameleon_collate,
+    full_descriptor_cols,
 )
 from ..data.residue_vocab import ResidueVocab
+from ..data.scaffold_groups import build_scaffold_groups
 from ..data.splits import load_split
 from ..losses.composite import CompositeLoss, composite_loss
 from ..data.delta_descriptors import apply_delta_features
@@ -62,14 +64,28 @@ def _move_batch(batch: dict, device: torch.device) -> dict:
     return out
 
 
+def _load_gbr_preds(cfg: TrainConfig) -> Dict[int, float]:
+    """Load the pid -> GBR-prediction map when gbr_residual / distillation is on."""
+    if not (getattr(cfg, "gbr_residual", False) or getattr(cfg, "lambda_distill", 0.0) > 0):
+        return {}
+    path = getattr(cfg, "gbr_preds_path", None)
+    if not path:
+        raise ValueError("gbr_residual/distill requires cfg.gbr_preds_path (run compute_gbr_preds.py)")
+    raw = json.loads(Path(path).read_text())
+    return {int(k): float(v) for k, v in raw.items()}
+
+
 def _build_loaders(cfg: TrainConfig, vocab: ResidueVocab):
     if cfg.descriptor_cols:
         descriptor_cols = cfg.descriptor_cols
+    elif getattr(cfg, "use_full_descriptors", False):
+        descriptor_cols = full_descriptor_cols(cfg.csv_path)
     elif getattr(cfg, "use_extended_descriptors", False):
         descriptor_cols = EXTENDED_DESCRIPTORS
     else:
         descriptor_cols = DEFAULT_DESCRIPTORS
     augment = cfg.augment_delta_descriptors or cfg.model_arch == "v2"
+    gbr_preds = _load_gbr_preds(cfg)
 
     def make_dataset(scheme: str, fold: str) -> ChameleonDataset:
         ids = load_split(cfg.splits_dir, scheme, fold)
@@ -84,6 +100,7 @@ def _build_loaders(cfg: TrainConfig, vocab: ResidueVocab):
             cache_dir=cfg.cache_dir,
             augment_delta_descriptors=augment,
             conformer_source=getattr(cfg, "conformer_source", "trajectory"),
+            gbr_preds=gbr_preds,
         )
 
     train_ds = make_dataset(cfg.split_scheme, "train")
@@ -102,19 +119,10 @@ def _build_loaders(cfg: TrainConfig, vocab: ResidueVocab):
         train_desc = raw_train
     scaler = DescriptorScaler().fit(train_desc)
 
-    # Apply scaler at __getitem__ time via a thin wrapper to avoid mutating
-    # the dataset's underlying records.
-    def _wrap(ds: ChameleonDataset):
-        orig = ds.__getitem__
-        def __getitem__(idx: int) -> dict:
-            sample = orig(idx)
-            sample["descriptors"] = scaler.transform(sample["descriptors"])
-            return sample
-        ds.__getitem__ = __getitem__  # type: ignore[method-assign]
-        return ds
-
-    train_ds = _wrap(train_ds)
-    val_ds = _wrap(val_ds)
+    # Apply the scaler via the dataset's real (class-level) __getitem__ — see the
+    # note in ChameleonDataset.__init__ on why monkeypatching the instance fails.
+    train_ds.scaler = scaler
+    val_ds.scaler = scaler
 
     train_loader = DataLoader(
         train_ds, batch_size=cfg.batch_size, shuffle=True,
@@ -159,6 +167,37 @@ class Trainer:
         else:
             raise ValueError(f"Unknown model_arch: {cfg.model_arch!r}; expected 'v1' or 'v2'")
 
+        # Scaffold adversary: build train-only scaffold-cluster labels and a
+        # pid -> group lookup. Only active when both knobs are set; the model
+        # then grows a gradient-reversal head over the learned representation.
+        self.scaffold_adv_on = cfg.lambda_adv > 0 and cfg.adv_n_groups > 0
+        self.scaffold_groups: Dict[int, int] = {}
+        n_scaffold_groups = 0
+        if self.scaffold_adv_on:
+            train_ids = load_split(cfg.splits_dir, cfg.split_scheme, "train")
+            self.scaffold_groups = build_scaffold_groups(
+                train_ids=train_ids,
+                csv_path=cfg.csv_path,
+                n_groups=cfg.adv_n_groups,
+                seed=cfg.seed,
+                cache_dir=cfg.cache_dir,
+                scheme=cfg.split_scheme,
+            )
+            n_scaffold_groups = cfg.adv_n_groups
+
+        adv_kwargs = (
+            {
+                "n_scaffold_groups": n_scaffold_groups,
+                "adv_hidden": cfg.adv_hidden,
+                "modality_dropout": cfg.modality_dropout,
+                "physics_residual": cfg.physics_residual,
+                "info_bottleneck": cfg.info_bottleneck,
+                "gbr_residual": cfg.gbr_residual,
+                "distill": cfg.lambda_distill > 0,
+            }
+            if cfg.model_arch == "v1"
+            else {}
+        )
         self.model = ModelCls(
             vocab=self.vocab,
             descriptor_dim=self.descriptor_dim,
@@ -169,7 +208,16 @@ class Trainer:
             helmbert_name_or_path=cfg.helmbert_name_or_path,
             head_hidden=cfg.head_hidden,
             dropout=cfg.dropout,
+            residue_emb_path=cfg.residue_emb_path,
+            **adv_kwargs,
         ).to(self.device)
+        if self.scaffold_adv_on and getattr(self.model, "scaffold_adversary", None) is None:
+            # Model arch doesn't support the adversary yet (e.g. v2) — fail loud
+            # rather than silently training a plain model.
+            raise ValueError(
+                f"lambda_adv>0 but model_arch={cfg.model_arch!r} has no scaffold "
+                "adversary; the GRL head is currently wired for model_arch='v1'."
+            )
 
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay
@@ -179,6 +227,10 @@ class Trainer:
             lambda_chameleonic=cfg.lambda_chameleonic,
             lambda_triplet=cfg.lambda_triplet,
             lambda_residue_psa=cfg.lambda_residue_psa if cfg.model_arch == "v2" else 0.0,
+            lambda_adv=cfg.lambda_adv if self.scaffold_adv_on else 0.0,
+            lambda_resid_l2=cfg.lambda_resid_l2,
+            lambda_ib=cfg.lambda_ib,
+            lambda_distill=cfg.lambda_distill,
             pampa_baseline=cfg.pampa_baseline,
             triplet_sim_high=getattr(cfg, "triplet_sim_high", 0.7),
             triplet_sim_low=getattr(cfg, "triplet_sim_low", 0.4),
@@ -228,12 +280,21 @@ class Trainer:
                     [outputs["h_water"], outputs["h_hexane"], outputs["h_diff"]],
                     dim=-1,
                 )
+            scaffold_groups = None
+            if self.scaffold_adv_on and "pids" in batch:
+                scaffold_groups = torch.tensor(
+                    [self.scaffold_groups.get(int(p), -1) for p in batch["pids"]],
+                    dtype=torch.long,
+                    device=self.device,
+                )
             losses = composite_loss(
                 outputs=outputs,
                 targets=targets,
                 smiles=batch["smiles"],
                 fused_embedding=fused,
                 delta_psa_target=batch.get("delta_psa_raw"),
+                scaffold_groups=scaffold_groups,
+                gbr_pred=batch.get("gbr_pred"),
                 cfg=self.loss_cfg,
             )
             if train:
@@ -251,13 +312,14 @@ class Trainer:
             "chameleonic": float(losses["chameleonic"].cpu()),
             "triplet": float(losses["triplet"].cpu()),
             "residue_psa": float(losses.get("residue_psa", losses["mse"].new_zeros(())).cpu()),
+            "adv": float(losses.get("adv", losses["mse"].new_zeros(())).cpu()),
             "preds": outputs["pampa_pred"].detach().cpu().numpy(),
             "targets": targets.detach().cpu().numpy(),
         }
 
     def _epoch_pass(self, loader: DataLoader, train: bool) -> Dict[str, float]:
         agg: Dict[str, List[float]] = {
-            "total": [], "mse": [], "chameleonic": [], "triplet": [], "residue_psa": [],
+            "total": [], "mse": [], "chameleonic": [], "triplet": [], "residue_psa": [], "adv": [],
         }
         all_preds, all_targets = [], []
         for batch in loader:
@@ -281,6 +343,13 @@ class Trainer:
         for epoch in range(self.cfg.epochs):
             lr_factor = _cosine_warmup_lr(epoch, self.cfg)
             self._set_lr(lr_factor)
+            # Ramp the gradient-reversal strength 0 -> adv_lambda_max so the
+            # adversary head learns to read scaffold identity before the encoder
+            # starts being pushed to erase it (stabilises DANN training).
+            if self.scaffold_adv_on:
+                w = self.cfg.adv_warmup_epochs
+                frac = 1.0 if w <= 0 else min(1.0, epoch / w)
+                self.model.adv_lambda = float(self.cfg.adv_lambda_max) * frac
             t0 = time.time()
             train_stats = self._epoch_pass(self.train_loader, train=True)
             val_stats = self._epoch_pass(self.val_loader, train=False)
@@ -360,16 +429,9 @@ class Trainer:
                     self.cfg.augment_delta_descriptors or self.cfg.model_arch == "v2"
                 ),
                 conformer_source=getattr(self.cfg, "conformer_source", "trajectory"),
+                gbr_preds=_load_gbr_preds(self.cfg),
             )
-            scaler = self.scaler
-            orig = ds.__getitem__
-
-            def __getitem__(idx: int) -> dict:
-                sample = orig(idx)
-                sample["descriptors"] = scaler.transform(sample["descriptors"])
-                return sample
-
-            ds.__getitem__ = __getitem__  # type: ignore[method-assign]
+            ds.scaler = self.scaler
 
             loader = DataLoader(
                 ds, batch_size=self.cfg.batch_size, shuffle=False,

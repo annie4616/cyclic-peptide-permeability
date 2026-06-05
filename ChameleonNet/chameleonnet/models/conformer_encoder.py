@@ -15,7 +15,8 @@ for other parts of the pipeline, this can be swapped out for `egnn_pytorch`.
 
 from __future__ import annotations
 
-from typing import Optional
+from pathlib import Path
+from typing import List, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -77,6 +78,48 @@ class _EGNNLayer(nn.Module):
         return h_new
 
 
+def _load_pretrained_residue_embed(
+    path: Union[str, Path],
+    expected_vocab_size: int,
+    expected_tokens: Optional[List[str]] = None,
+) -> tuple[nn.Embedding, int]:
+    """Load a (V, lm_hidden) tensor from `build_residue_lm_embeddings.py` and
+    wrap it as a frozen nn.Embedding with padding_idx=0.
+
+    Raises if the loaded vocab size or token order doesn't match the current
+    ResidueVocab — vocab drift here would silently swap residue priors and
+    poison training, so we'd rather fail loudly at init.
+    """
+    payload = torch.load(Path(path), map_location="cpu", weights_only=False)
+    weights = payload["embeddings"] if isinstance(payload, dict) else payload
+    if not isinstance(weights, torch.Tensor):
+        raise TypeError(
+            f"Expected a torch.Tensor of embeddings in {path}, got {type(weights)}"
+        )
+    if weights.dim() != 2:
+        raise ValueError(
+            f"Pretrained residue embeddings must be 2D (V, F); got shape {tuple(weights.shape)}"
+        )
+    V, lm_hidden = weights.shape
+    if V != expected_vocab_size:
+        raise ValueError(
+            f"Pretrained residue vocab size ({V}) != current vocab size "
+            f"({expected_vocab_size}). Re-run build_residue_lm_embeddings.py "
+            "against the current ResidueVocab."
+        )
+    if expected_tokens is not None and isinstance(payload, dict):
+        stored = payload.get("tokens")
+        if stored is not None and list(stored) != list(expected_tokens):
+            raise ValueError(
+                "Pretrained residue embedding token order does not match the "
+                "current ResidueVocab. Re-run build_residue_lm_embeddings.py."
+            )
+    emb = nn.Embedding.from_pretrained(
+        weights.float(), freeze=True, padding_idx=0
+    )
+    return emb, lm_hidden
+
+
 class ConformerEncoder(nn.Module):
     """Encodes a flat batch of conformers (sum_K, Nmax, 3) into per-conformer vectors.
 
@@ -93,18 +136,41 @@ class ConformerEncoder(nn.Module):
         self,
         hidden_dim: int = 128,
         num_layers: int = 3,
-        max_z: int = 36,
+        max_z: int = 36, # H ~ Br 커버. 원자번호
         residue_vocab_size: int = 64,
         edge_hidden: int = 64,
+        residue_emb_path: Optional[Union[str, Path]] = None,
+        residue_vocab_tokens: Optional[List[str]] = None,
     ):
         super().__init__()
         self.atom_embed = nn.Embedding(max_z, hidden_dim, padding_idx=0)
-        self.res_embed = nn.Embedding(residue_vocab_size, hidden_dim, padding_idx=0)
+        if residue_emb_path is not None:
+            # PeptideCLM-2 사전추출 임베딩을 frozen lookup으로 사용하고, projection만 학습.
+            # residue_vocab_tokens가 주어지면 저장된 임베딩의 토큰 순서가 현재 vocab과
+            # 동일한지 확인해 잘못된 정렬로 인한 silent corruption을 막는다.
+            self.res_embed, lm_hidden = _load_pretrained_residue_embed(
+                residue_emb_path,
+                expected_vocab_size=residue_vocab_size,
+                expected_tokens=residue_vocab_tokens,
+            )
+            self.res_proj: nn.Module = nn.Linear(lm_hidden, hidden_dim)
+        else:
+            self.res_embed = nn.Embedding(residue_vocab_size, hidden_dim, padding_idx=0)
+            self.res_proj = nn.Identity()
         self.input_mix = nn.Linear(hidden_dim, hidden_dim)
         self.layers = nn.ModuleList(
             [_EGNNLayer(hidden_dim, edge_hidden) for _ in range(num_layers)]
         )
         self.out_norm = nn.LayerNorm(hidden_dim)
+
+    def atom_features(self, z: torch.Tensor, res: torch.Tensor) -> torch.Tensor:
+        """Initial per-atom features: atom embedding + (projected) residue embedding.
+
+        Exposed so callers that bypass forward (V2's residue-pool path) get the
+        same atom-level prior — including the PeptideCLM-2 projection when a
+        pretrained residue embedding is in use.
+        """
+        return self.atom_embed(z) + self.res_proj(self.res_embed(res))
 
     def forward(
         self,
@@ -113,14 +179,16 @@ class ConformerEncoder(nn.Module):
         res: torch.Tensor,
         pad_mask: torch.Tensor,
     ) -> torch.Tensor:
-        # Initial node features = atomic-number embedding + residue embedding.
-        h = self.atom_embed(z) + self.res_embed(res)
-        h = self.input_mix(h)
-        h = h * (~pad_mask).float().unsqueeze(-1)
+        # Initial node features = atomic-number embedding + (projected) residue embedding.
+        # atom_features 헬퍼를 거치게 해서 V2의 atom-level forward 경로(residue pool)와
+        # 같은 처리가 보장되도록 한다.
+        h = self.atom_features(z, res)  # (M, Nmax, F)
+        h = self.input_mix(h) # linear layer로 섞어주기. 원자 번호와 잔기 정보가 섞여서 초기 노드 피처가 됨
+        h = h * (~pad_mask).float().unsqueeze(-1) # 패딩 노드 0
         for layer in self.layers:
-            h = layer(h, coords, pad_mask)
-        h = self.out_norm(h)
+            h = layer(h, coords, pad_mask) # EGNN layer 통과하면서 노드 feature 업데이트
+        h = self.out_norm(h) # 정규화
         # Mean-pool over real atoms per conformer.
-        valid = (~pad_mask).float().unsqueeze(-1)
-        pooled = (h * valid).sum(dim=1) / valid.sum(dim=1).clamp_min(1.0)
+        valid = (~pad_mask).float().unsqueeze(-1) # (M, Nmax, 1)
+        pooled = (h * valid).sum(dim=1) / valid.sum(dim=1).clamp_min(1.0) # 패딩 된 원자 빼고 실제 원자만 풀링
         return pooled  # (M, hidden_dim)
