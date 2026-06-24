@@ -31,8 +31,10 @@ from ..data.residue_vocab import ResidueVocab
 from .adversary import ScaffoldAdversary
 from .attention_pool import ConformerAttentionPool
 from .conformer_encoder import ConformerEncoder
+from .nsegnn_encoder import NSEGNNConformerEncoder
 from .descriptor_mlp import DescriptorMLP
 from .sequence_encoder import SequenceEncoder
+from .transformer_pool import ConformerTransformerPool
 
 
 class ChameleonNet(nn.Module):
@@ -55,9 +57,38 @@ class ChameleonNet(nn.Module):
         info_bottleneck: bool = False,
         gbr_residual: bool = False,
         distill: bool = False,
+        hexane_only: bool = False,
+        water_only: bool = False,
+        no_diff: bool = False,
+        no_conformer: bool = False,
+        conformer_encoder_arch: str = "egnn",
+        pool_type: str = "attention",
+        pool_transformer_layers: int = 2,
+        pool_transformer_heads: int = 4,
     ):
         super().__init__()
         self.hidden_dim = hidden_dim
+        # Hexane-only ablation: encode ONLY the hexane conformer ensemble with the
+        # EGNN. The water branch is skipped entirely and h_water / h_diff are held
+        # at zero, so the chameleonic (water-vs-hexane contrast) signal is absent —
+        # the trainer forces lambda_chameleonic=0 in this mode. Fusion layout is
+        # kept identical so the head/checkpoint shapes are unchanged.
+        self.hexane_only = bool(hexane_only)
+        # Water-only ablation: symmetric to hexane_only — encode ONLY the water
+        # conformer ensemble; the hexane branch is skipped and h_hexane/h_diff
+        # held at zero (chameleonic contrast absent, lambda forced to 0).
+        self.water_only = bool(water_only)
+        # No-diff ablation: keep BOTH environment encoders (h_water, h_hexane) but
+        # remove the chameleonic difference branch — h_diff is held at zero in the
+        # fusion vector and the chameleonic head/loss are inert (lambda -> 0).
+        # Tests whether the explicit (water - hexane) contrast adds anything over
+        # having both environment embeddings available.
+        self.no_diff = bool(no_diff)
+        # No-conformer ablation: skip BOTH 3D environment encoders entirely
+        # (h_water/h_hexane/h_diff held at zero) — prediction uses only the
+        # sequence + descriptor branches. Tests whether the 3D conformer signal
+        # contributes anything over sequence+descriptors. ("0 conformers")
+        self.no_conformer = bool(no_conformer)
         self.modality_dropout = float(modality_dropout)
         self.physics_residual = bool(physics_residual)
         self.info_bottleneck = bool(info_bottleneck)
@@ -67,18 +98,50 @@ class ChameleonNet(nn.Module):
         # Shared 3D encoder for both environments — sharing weights means the
         # only difference between h_water and h_hexane comes from the input
         # geometry, which is the chameleonic signal we want to capture.
-        self.conformer_encoder = ConformerEncoder(
-            hidden_dim=hidden_dim,
-            num_layers=conformer_layers,
-            residue_vocab_size=len(vocab),
-            residue_emb_path=residue_emb_path,
-            residue_vocab_tokens=list(vocab._tokens),
-        )
-        # Separate attention poolers per environment: solvents may weight
-        # different conformers differently (a low-energy water conformer might
-        # not be the dominant hexane conformer).
-        self.water_pool = ConformerAttentionPool(hidden_dim)
-        self.hexane_pool = ConformerAttentionPool(hidden_dim)
+        #   "egnn"     — default SchNet-ish EGNN, per-conformer encode + pool.
+        #   "ns_egnn"  — Non-Stationary EGNN: equivariant E_GCL + multi-scale STFT
+        #     over the conformer trajectory; returns a per-molecule env embedding
+        #     directly (the AttentionPool path is bypassed for this arch).
+        self.conformer_encoder_arch = str(conformer_encoder_arch)
+        if self.conformer_encoder_arch == "ns_egnn":
+            self.conformer_encoder = NSEGNNConformerEncoder(
+                hidden_dim=hidden_dim, num_layers=conformer_layers,
+                residue_vocab_size=len(vocab),
+                residue_vocab_tokens=list(vocab._tokens),
+            )
+        else:
+            self.conformer_encoder = ConformerEncoder(
+                hidden_dim=hidden_dim,
+                num_layers=conformer_layers,
+                residue_vocab_size=len(vocab),
+                residue_emb_path=residue_emb_path,
+                residue_vocab_tokens=list(vocab._tokens),
+            )
+        # Separate poolers per environment: solvents may weight different
+        # conformers differently (a low-energy water conformer might not be the
+        # dominant hexane conformer).
+        #   "attention"  — permutation-invariant softmax bag (default; original).
+        #   "transformer"— treats each peptide's conformers as a trajectory-
+        #     ordered sequence ([CLS] h_0 h_1 ...) with positional embeddings and
+        #     a small TransformerEncoder; the CLS output is the env vector.
+        self.pool_type = str(pool_type)
+        if self.pool_type == "transformer":
+            def _mk_pool() -> nn.Module:
+                return ConformerTransformerPool(
+                    hidden_dim,
+                    num_layers=pool_transformer_layers,
+                    nhead=pool_transformer_heads,
+                    dropout=dropout,
+                )
+        elif self.pool_type == "attention":
+            def _mk_pool() -> nn.Module:
+                return ConformerAttentionPool(hidden_dim)
+        else:
+            raise ValueError(
+                f"pool_type must be 'attention' or 'transformer', got {pool_type!r}"
+            )
+        self.water_pool = _mk_pool()
+        self.hexane_pool = _mk_pool()
 
         self.sequence_encoder = SequenceEncoder(
             vocab=vocab,
@@ -175,7 +238,7 @@ class ChameleonNet(nn.Module):
     def encode_environment(
         self,
         env: Dict[str, torch.Tensor],
-        pool: ConformerAttentionPool,
+        pool: nn.Module,
     ) -> torch.Tensor:
         """Run the shared 3D encoder + the env-specific attention pooler.
 
@@ -183,6 +246,14 @@ class ChameleonNet(nn.Module):
         pass them in as a log-prior so larger basins get more attention by
         default — same path V2 uses.
         """
+        # NS-EGNN encodes the whole conformer trajectory per molecule and returns
+        # a per-molecule env vector directly (no separate pooling step).
+        if self.conformer_encoder_arch == "ns_egnn":
+            return self.conformer_encoder.forward_env(
+                coords=env["coords"], z=env["z"], res=env["res"],
+                pad_mask=env["pad_mask"], batch_index=env["batch_index"],
+                batch_size=int(env["sample_K"].shape[0]),
+            )
         h = self.conformer_encoder(
             coords=env["coords"],
             z=env["z"],
@@ -195,8 +266,25 @@ class ChameleonNet(nn.Module):
         return pool(h, env["batch_index"], batch_size, log_prior=log_prior)
 
     def forward(self, batch: Dict) -> Dict[str, torch.Tensor]:
-        h_water = self.encode_environment(batch["water"], self.water_pool)
-        h_hexane = self.encode_environment(batch["hexane"], self.hexane_pool)
+        if self.no_conformer:
+            # Skip both 3D encoders; build zero env embeddings of shape (B, hidden).
+            B = len(batch["sequences"])
+            dev = batch["descriptors"].device
+            h_water = torch.zeros(B, self.hidden_dim, device=dev)
+            h_hexane = torch.zeros(B, self.hidden_dim, device=dev)
+        elif self.water_only:
+            # Encode ONLY water; hold hexane/diff slots at zero (symmetric to
+            # hexane_only). Fusion layout unchanged so head/checkpoint shapes match.
+            h_water = self.encode_environment(batch["water"], self.water_pool)
+            h_hexane = torch.zeros_like(h_water)
+        else:
+            h_hexane = self.encode_environment(batch["hexane"], self.hexane_pool)
+            if self.hexane_only:
+                # Skip the water EGNN pass entirely; hold the water/diff slots at zero
+                # so downstream fusion shapes are unchanged but carry no water signal.
+                h_water = torch.zeros_like(h_hexane)
+            else:
+                h_water = self.encode_environment(batch["water"], self.water_pool)
 
         h_seq = self.sequence_encoder(
             sequences=batch["sequences"],
@@ -215,7 +303,12 @@ class ChameleonNet(nn.Module):
             if torch.rand((), device=h_seq.device) < self.modality_dropout:
                 h_seq = torch.zeros_like(h_seq)
 
-        h_diff = h_water - h_hexane
+        # In single-environment modes the chameleonic contrast is undefined; keep
+        # h_diff at zero so the chameleonic head/loss stay inert (lambda is also
+        # forced to 0 by the trainer) and no single-env signal leaks via the diff.
+        h_diff = (torch.zeros_like(h_water)
+                  if (self.hexane_only or self.water_only or self.no_diff or self.no_conformer)
+                  else (h_water - h_hexane))
         learned = torch.cat([h_water, h_hexane, h_diff, h_seq], dim=-1)
 
         out: Dict[str, torch.Tensor] = {

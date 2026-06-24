@@ -1,0 +1,54 @@
+{
+  "hexane_only / OD_Murcko": {
+    "OD_Murcko": {
+      "test": {
+        "metric_mae": 0.4786245618547712,
+        "metric_mse": 0.4239094129245865,
+        "metric_r2": 0.4279237242134978,
+        "metric_pearson": 0.7042756831350592,
+        "metric_spearman": 0.6474875241014241
+      },
+      "best_val_mae": 0.4158019393123187,
+      "best_val_r2": 0.66251245964506
+    }
+  },
+  "hexane_only / ID": {
+    "ID": {
+      "test": {
+        "metric_mae": 0.33472131713619074,
+        "metric_mse": 0.24255973507250914,
+        "metric_r2": 0.40803523643605333,
+        "metric_pearson": 0.648453121946062,
+        "metric_spearman": 0.6576523461459413
+      },
+      "best_val_mae": 0.30907904132594904,
+      "best_val_r2": 0.6582980103577539
+    }
+  },
+  "xfmr_pool / OD_Murcko": {
+    "OD_Murcko": {
+      "test": {
+        "metric_mae": 0.5201302976024395,
+        "metric_mse": 0.4885178891923669,
+        "metric_r2": 0.34073298166188615,
+        "metric_pearson": 0.6242626310281728,
+        "metric_spearman": 0.5577246642858303
+      },
+      "best_val_mae": 0.4070078463720572,
+      "best_val_r2": 0.6858008086567002
+    }
+  },
+  "xfmr_pool / ID": {
+    "ID": {
+      "test": {
+        "metric_mae": 0.34128538282906135,
+        "metric_mse": 0.24676582655616924,
+        "metric_r2": 0.39777030953089787,
+        "metric_pearson": 0.6373046514788879,
+        "metric_spearman": 0.6534047767522032
+      },
+      "best_val_mae": 0.31814877579851847,
+      "best_val_r2": 0.6273735170082669
+    }
+  }
+}

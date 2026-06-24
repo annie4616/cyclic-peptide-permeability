@@ -1,0 +1,82 @@
+csv_path: /hdd0/sohyun/cyclic-peptide-permeability/data/CycPeptMPDB-4D_with_assay_descriptors_preprocessed.csv
+pdb_root: /hdd0/sohyun/cyclic-peptide-permeability/CycPeptMPDB-4D
+splits_dir: /hdd0/sohyun/cyclic-peptide-permeability/splits
+cache_dir: /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/.cache_pdb
+split_scheme: OD_Murcko
+use_trajectory: true
+max_conformers: 10
+model_arch: v1
+hidden_dim: 128
+conformer_layers: 3
+sequence_backend: learned
+head_hidden: 256
+dropout: 0.1
+lambda_chameleonic: 0.1
+lambda_triplet: 0
+lambda_residue_psa: 0
+pampa_baseline: -8
+batch_size: 16
+num_workers: 8
+epochs: 50
+lr: 0.0005
+weight_decay: 0.00001
+warmup_epochs: 5
+grad_clip: 1
+early_stop_patience: 10
+seed: 42
+device: cuda
+wandb_project: chameleonnet-campaign
+wandb_mode: offline
+augment_delta_descriptors: true
+output_dir: /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/campaign/s2_extsel
+wandb_run_name: s2_extsel
+descriptor_cols:
+  - Water_avgRMSD_All
+  - Water_avgRMSD_BackBone
+  - Desolvation_Free_Energy
+  - Water_3D_SASA
+  - Water_3D_NPSA
+  - Water_3D_PSA
+  - Hexane_avgRMSD_All
+  - Hexane_avgRMSD_BackBone
+  - Hexane_3D_SASA
+  - Hexane_3D_NPSA
+  - Hexane_3D_PSA
+  - MolWt
+  - HeavyAtomCount
+  - NumHDonors
+  - NumHAcceptors
+  - NumRotatableBonds
+  - TPSA
+  - MolLogP
+  - qed
+  - FractionCSP3
+  - NumAromaticRings
+  - NumAliphaticRings
+  - RingCount
+  - NumHeteroatoms
+  - BertzCT
+  - LabuteASA
+  - MaxPartialCharge
+  - MinPartialCharge
+  - BCUT2D_MRLOW
+  - Chi1v
+  - MinAbsEStateIndex
+  - BalabanJ
+  - VSA_EState2
+  - BCUT2D_LOGPLOW
+  - FpDensityMorgan2
+  - SlogP_VSA2
+  - EState_VSA10
+  - BCUT2D_CHGLO
+  - SlogP_VSA7
+  - VSA_EState5
+  - VSA_EState6
+  - MinEStateIndex
+  - MolMR
+  - VSA_EState1
+vocab_csvs:
+  - /hdd0/sohyun/cyclic-peptide-permeability/eda/water_residue_vocab.csv
+  - /hdd0/sohyun/cyclic-peptide-permeability/eda/hexane_residue_vocab.csv
+eval_schemes:
+  - OD_Murcko

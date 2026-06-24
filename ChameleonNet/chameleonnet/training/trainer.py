@@ -101,6 +101,7 @@ def _build_loaders(cfg: TrainConfig, vocab: ResidueVocab):
             augment_delta_descriptors=augment,
             conformer_source=getattr(cfg, "conformer_source", "trajectory"),
             gbr_preds=gbr_preds,
+            conformer_stride=getattr(cfg, "conformer_stride", 0),
         )
 
     train_ds = make_dataset(cfg.split_scheme, "train")
@@ -123,6 +124,11 @@ def _build_loaders(cfg: TrainConfig, vocab: ResidueVocab):
     # note in ChameleonDataset.__init__ on why monkeypatching the instance fails.
     train_ds.scaler = scaler
     val_ds.scaler = scaler
+
+    # Conformer augmentation on the TRAIN dataset only (val stays deterministic).
+    if getattr(cfg, "conformer_augment", False):
+        train_ds.conformer_augment = True
+        train_ds.coord_noise = cfg.coord_noise
 
     train_loader = DataLoader(
         train_ds, batch_size=cfg.batch_size, shuffle=True,
@@ -194,6 +200,14 @@ class Trainer:
                 "info_bottleneck": cfg.info_bottleneck,
                 "gbr_residual": cfg.gbr_residual,
                 "distill": cfg.lambda_distill > 0,
+                "hexane_only": getattr(cfg, "hexane_only", False),
+                "water_only": getattr(cfg, "water_only", False),
+                "no_diff": getattr(cfg, "no_diff", False),
+                "no_conformer": getattr(cfg, "no_conformer", False),
+                "conformer_encoder_arch": getattr(cfg, "conformer_encoder_arch", "egnn"),
+                "pool_type": getattr(cfg, "pool_type", "attention"),
+                "pool_transformer_layers": getattr(cfg, "pool_transformer_layers", 2),
+                "pool_transformer_heads": getattr(cfg, "pool_transformer_heads", 4),
             }
             if cfg.model_arch == "v1"
             else {}
@@ -211,6 +225,15 @@ class Trainer:
             residue_emb_path=cfg.residue_emb_path,
             **adv_kwargs,
         ).to(self.device)
+        # Optionally warm-start the 3D encoder from CREMP denoising pretraining.
+        pe = getattr(cfg, "pretrained_encoder_path", None)
+        if pe:
+            ckpt = torch.load(pe, map_location=self.device, weights_only=False)
+            sd = ckpt["encoder"] if "encoder" in ckpt else ckpt
+            missing, unexpected = self.model.conformer_encoder.load_state_dict(sd, strict=False)
+            print(json.dumps({"pretrained_encoder": pe,
+                              "loaded": len(sd), "missing": len(missing), "unexpected": len(unexpected)}))
+
         if self.scaffold_adv_on and getattr(self.model, "scaffold_adversary", None) is None:
             # Model arch doesn't support the adversary yet (e.g. v2) — fail loud
             # rather than silently training a plain model.
@@ -223,8 +246,13 @@ class Trainer:
             self.model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay
         )
 
+        # The chameleonic loss compares water vs hexane; with either single-env
+        # ablation on it has no meaning, so force its weight to 0.
+        _single_env = (getattr(cfg, "hexane_only", False) or getattr(cfg, "water_only", False)
+                       or getattr(cfg, "no_diff", False) or getattr(cfg, "no_conformer", False))
+        _lambda_cham = 0.0 if _single_env else cfg.lambda_chameleonic
         self.loss_cfg = CompositeLoss(
-            lambda_chameleonic=cfg.lambda_chameleonic,
+            lambda_chameleonic=_lambda_cham,
             lambda_triplet=cfg.lambda_triplet,
             lambda_residue_psa=cfg.lambda_residue_psa if cfg.model_arch == "v2" else 0.0,
             lambda_adv=cfg.lambda_adv if self.scaffold_adv_on else 0.0,
@@ -430,6 +458,7 @@ class Trainer:
                 ),
                 conformer_source=getattr(self.cfg, "conformer_source", "trajectory"),
                 gbr_preds=_load_gbr_preds(self.cfg),
+                conformer_stride=getattr(self.cfg, "conformer_stride", 0),
             )
             ds.scaler = self.scaler
 

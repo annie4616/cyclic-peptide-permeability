@@ -33,6 +33,14 @@ class TrainConfig:
     use_extended_descriptors: bool = False  # add 17 RDKit features after the 11 MD-derived ones
     use_full_descriptors: bool = False  # use ALL numeric non-leakage CSV columns (keeps MD-11 first)
     conformer_source: str = "trajectory"  # "trajectory" | "centroids"
+    # Train-only conformer augmentation (random subsample + coordinate jitter).
+    conformer_augment: bool = False
+    coord_noise: float = 0.0  # Gaussian std in Angstrom added to coords (train)
+    # Deterministic stride sampling: keep every Nth trajectory frame (0 disables;
+    # >1 takes precedence over random-augment and the max_conformers count cap).
+    # Applied to BOTH train and eval so sampling stays consistent. With 100-frame
+    # trajectories, stride=8 -> 13 conformers at a constant time gap.
+    conformer_stride: int = 0
 
     # model
     model_arch: str = "v1"  # "v1" | "v2" — v2 is residue-resolved chameleonic
@@ -58,6 +66,30 @@ class TrainConfig:
     lambda_resid_l2: float = 0.0
     info_bottleneck: bool = False
     lambda_ib: float = 0.0
+    # Hexane-only ablation (v1): run the EGNN conformer encoder on the hexane
+    # ensemble only; the water branch is skipped and h_water/h_diff held at zero.
+    # The chameleonic loss is meaningless here, so the trainer forces
+    # lambda_chameleonic -> 0 when this is on.
+    hexane_only: bool = False
+    # Water-only ablation (v1): symmetric to hexane_only — encode the water
+    # ensemble only; hexane branch skipped, h_hexane/h_diff held at zero,
+    # lambda_chameleonic forced -> 0.
+    water_only: bool = False
+    # No-diff ablation (v1): keep both env encoders but drop the chameleonic
+    # difference branch (h_diff held at zero, lambda_chameleonic forced -> 0).
+    no_diff: bool = False
+    # No-conformer ablation (v1): skip both 3D environment encoders; predict from
+    # sequence + descriptors only (h_water/h_hexane/h_diff = 0, lambda_cham -> 0).
+    no_conformer: bool = False
+    # 3D encoder architecture (v1): "egnn" (default) or "ns_egnn" (Non-Stationary
+    # EGNN: equivariant E_GCL + multi-scale STFT over the conformer trajectory).
+    conformer_encoder_arch: str = "egnn"
+    # Conformer pooling (v1): "attention" (permutation-invariant softmax bag,
+    # default) or "transformer" (trajectory-ordered [CLS] sequence + positional
+    # embeddings through a small TransformerEncoder, CLS output = env vector).
+    pool_type: str = "attention"
+    pool_transformer_layers: int = 2
+    pool_transformer_heads: int = 4
     # gbr_residual: prediction = gbr_pred + gated learned residual. Needs a
     # precomputed pid->gbr_pred map (scripts/compute_gbr_preds.py); the deep
     # model only has to learn what the descriptor-GBR misses (the chameleonic
@@ -73,6 +105,9 @@ class TrainConfig:
     # it None preserves the original behavior (random embedding learned from
     # scratch) so existing baselines stay reproducible.
     residue_emb_path: Optional[str] = None
+    # Path to a CREMP-pretrained ConformerEncoder state_dict (scripts/pretrain_cremp.py).
+    # Loaded into model.conformer_encoder before training (strict=False).
+    pretrained_encoder_path: Optional[str] = None
 
     # losses
     lambda_chameleonic: float = 0.1

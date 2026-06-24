@@ -1,0 +1,306 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    python_version: 3.13.13
+    cli_version: 0.26.1
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1781598959
+    t:
+      1:
+      - 1
+      2:
+      - 1
+      3:
+      - 2
+      - 4
+      - 13
+      - 16
+      - 42
+      - 61
+      - 62
+      4: 3.13.13
+      5: 0.26.1
+      10:
+      - 20
+      13: linux-x86_64
+    e:
+      at73042jtwci6y7z9t63o8bq6yi7x6up:
+        os: Linux-6.8.0-107-generic-x86_64-with-glibc2.39
+        python: CPython 3.13.13
+        started_at: '2026-06-16T08:35:59.299693Z'
+        args:
+        - --config
+        - configs/campaign/w1_wateronly.yaml
+        program: /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/scripts/train.py
+        code_path: ChameleonNet/scripts/train.py
+        code_path_local: scripts/train.py
+        git:
+          remote_url: git@github.com:annie4616/cyclic-peptide-permeability.git
+          commit: 0d06bc78b76d3250da822addc68b9572f83aab57
+        root: /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/campaign/w1_wateronly
+        host: rpower5
+        executable: /home/sohyun/.conda/envs/chameleonnet/bin/python
+        cpu_count: 192
+        cpu_count_logical: 384
+        gpu_type: NVIDIA RTX PRO 6000 Blackwell Server Edition
+        gpu_count: 8
+        disk:
+          /:
+            total: '7527832182784'
+            used: '5068750778368'
+        memory:
+          total: '1081499680768'
+        gpu_nvidia:
+        - name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+          memory_total: '102641958912'
+          cuda_cores: 24064
+          architecture: Blackwell
+          uuid: GPU-2f20f2ed-8f43-9e26-7338-063e7d40c807
+        - name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+          memory_total: '102641958912'
+          cuda_cores: 24064
+          architecture: Blackwell
+          uuid: GPU-24d7eff6-b9e6-1464-4c6e-2f4b509717d8
+        - name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+          memory_total: '102641958912'
+          cuda_cores: 24064
+          architecture: Blackwell
+          uuid: GPU-5627fe24-9876-a133-45e1-f11e48ac7cb2
+        - name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+          memory_total: '102641958912'
+          cuda_cores: 24064
+          architecture: Blackwell
+          uuid: GPU-a08a48c0-9db9-0e73-69a7-962dd0911416
+        - name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+          memory_total: '102641958912'
+          cuda_cores: 24064
+          architecture: Blackwell
+          uuid: GPU-e1826bfb-cd29-43e7-dd82-7e8f22032e9c
+        - name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+          memory_total: '102641958912'
+          cuda_cores: 24064
+          architecture: Blackwell
+          uuid: GPU-4a1a89d4-06a7-015e-4f9a-034b6de0d6b4
+        - name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+          memory_total: '102641958912'
+          cuda_cores: 24064
+          architecture: Blackwell
+          uuid: GPU-a0283a70-ba1c-de52-5314-7a875cfbca64
+        - name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+          memory_total: '102641958912'
+          cuda_cores: 24064
+          architecture: Blackwell
+          uuid: GPU-42d99e58-6db5-4f2a-acbc-f34e7d1e8e5e
+        cuda_version: '13.0'
+        writer_id: at73042jtwci6y7z9t63o8bq6yi7x6up
+csv_path:
+  desc: null
+  value: /hdd0/sohyun/cyclic-peptide-permeability/data/CycPeptMPDB-4D_with_assay_descriptors_preprocessed.csv
+pdb_root:
+  desc: null
+  value: /hdd0/sohyun/cyclic-peptide-permeability/CycPeptMPDB-4D
+splits_dir:
+  desc: null
+  value: /hdd0/sohyun/cyclic-peptide-permeability/splits
+vocab_csvs:
+  desc: null
+  value:
+  - /hdd0/sohyun/cyclic-peptide-permeability/eda/water_residue_vocab.csv
+  - /hdd0/sohyun/cyclic-peptide-permeability/eda/hexane_residue_vocab.csv
+cache_dir:
+  desc: null
+  value: /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/.cache_pdb
+output_dir:
+  desc: null
+  value: /hdd0/sohyun/cyclic-peptide-permeability/ChameleonNet/runs/campaign/w1_wateronly
+split_scheme:
+  desc: null
+  value: OD_Murcko
+use_trajectory:
+  desc: null
+  value: true
+max_conformers:
+  desc: null
+  value: 16
+descriptor_cols:
+  desc: null
+  value: null
+use_extended_descriptors:
+  desc: null
+  value: true
+use_full_descriptors:
+  desc: null
+  value: false
+conformer_source:
+  desc: null
+  value: trajectory
+conformer_augment:
+  desc: null
+  value: false
+coord_noise:
+  desc: null
+  value: 0.0
+conformer_stride:
+  desc: null
+  value: 0
+model_arch:
+  desc: null
+  value: v1
+augment_delta_descriptors:
+  desc: null
+  value: true
+hidden_dim:
+  desc: null
+  value: 128
+conformer_layers:
+  desc: null
+  value: 3
+sequence_backend:
+  desc: null
+  value: learned
+peptideclm_name_or_path:
+  desc: null
+  value: null
+helmbert_name_or_path:
+  desc: null
+  value: null
+head_hidden:
+  desc: null
+  value: 256
+dropout:
+  desc: null
+  value: 0.1
+modality_dropout:
+  desc: null
+  value: 0.0
+physics_residual:
+  desc: null
+  value: false
+lambda_resid_l2:
+  desc: null
+  value: 0.0
+info_bottleneck:
+  desc: null
+  value: false
+lambda_ib:
+  desc: null
+  value: 0.0
+hexane_only:
+  desc: null
+  value: false
+water_only:
+  desc: null
+  value: true
+pool_type:
+  desc: null
+  value: attention
+pool_transformer_layers:
+  desc: null
+  value: 2
+pool_transformer_heads:
+  desc: null
+  value: 4
+gbr_residual:
+  desc: null
+  value: false
+gbr_preds_path:
+  desc: null
+  value: null
+lambda_distill:
+  desc: null
+  value: 0.0
+residue_emb_path:
+  desc: null
+  value: null
+pretrained_encoder_path:
+  desc: null
+  value: null
+lambda_chameleonic:
+  desc: null
+  value: 0.1
+lambda_triplet:
+  desc: null
+  value: 0.0
+pampa_baseline:
+  desc: null
+  value: -8.0
+lambda_residue_psa:
+  desc: null
+  value: 0.0
+triplet_sim_high:
+  desc: null
+  value: 0.7
+triplet_sim_low:
+  desc: null
+  value: 0.4
+triplet_morgan_radius:
+  desc: null
+  value: 2
+triplet_morgan_nbits:
+  desc: null
+  value: 2048
+lambda_adv:
+  desc: null
+  value: 0.0
+adv_n_groups:
+  desc: null
+  value: 32
+adv_hidden:
+  desc: null
+  value: 128
+adv_lambda_max:
+  desc: null
+  value: 1.0
+adv_warmup_epochs:
+  desc: null
+  value: 10
+batch_size:
+  desc: null
+  value: 16
+num_workers:
+  desc: null
+  value: 8
+epochs:
+  desc: null
+  value: 80
+lr:
+  desc: null
+  value: 0.0005
+weight_decay:
+  desc: null
+  value: 1.0e-05
+warmup_epochs:
+  desc: null
+  value: 5
+grad_clip:
+  desc: null
+  value: 1.0
+early_stop_patience:
+  desc: null
+  value: 15
+eval_schemes:
+  desc: null
+  value:
+  - OD_Murcko
+seed:
+  desc: null
+  value: 42
+device:
+  desc: null
+  value: cuda
+wandb_project:
+  desc: null
+  value: chameleonnet-campaign
+wandb_entity:
+  desc: null
+  value: null
+wandb_run_name:
+  desc: null
+  value: w1_wateronly
+wandb_mode:
+  desc: null
+  value: offline
